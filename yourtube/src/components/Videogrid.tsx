@@ -3,19 +3,20 @@ import Videocard from "./videocard";
 import axiosInstance from "@/lib/axiosinstance";
 
 const Videogrid = () => {
-  const [videos, setvideo] = useState<any>(null);
+  const [videos, setvideo] = useState<any[]>([]);
   const [loading, setloading] = useState(true);
   useEffect(() => {
     const fetchvideo = async () => {
-      try {
-        const res = await axiosInstance.get("/video/getall");
-        setvideo(res.data);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setloading(false);
-      }
-    };
+  try {
+    const res = await axiosInstance.get("/video/getall");
+    console.log("Response:", res.data);
+    setvideo(res.data);
+  } catch (error) {
+    console.log("API Error:", error);
+  } finally {
+    setloading(false);
+  }
+};
     fetchvideo();
   }, []);
 
@@ -52,7 +53,9 @@ const Videogrid = () => {
       {loading ? (
         <>Loading..</>
       ) : (
-        videos.map((video: any) => <Videocard key={video._id} video={video} />)
+        videos?.map((video: any) => (
+  <Videocard key={video._id} video={video} />
+))
       )}
     </div>
   );

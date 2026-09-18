@@ -9,18 +9,36 @@ import likeroutes from "./routes/like.js";
 import watchlaterroutes from "./routes/watchlater.js";
 import historyrroutes from "./routes/history.js";
 import commentroutes from "./routes/comment.js";
-dotenv.config();
+const result = dotenv.config();
+
+console.log(result);
+console.log("Current Dir:", process.cwd());
+console.log("ENV File Value:", process.env.DB_URL);
 const app = express();
 import path from "path";
 app.use(cors());
 app.use(express.json({ limit: "30mb", extended: true }));
 app.use(express.urlencoded({ limit: "30mb", extended: true }));
-app.use("/uploads", express.static(path.join("uploads")));
+app.use("/uploads", express.static(process.cwd() + "/uploads"));
+app.get("/test", (req, res) => {
+  res.sendFile(path.resolve("uploads/2026-07-21T16-53-50.655Z-1v_0_20260623153455_processed.mp4"));
+});
 app.get("/", (req, res) => {
   res.send("You tube backend is working");
 });
+app.get("/test", (req, res) => {
+  res.send("Test route working");
+});
+
+app.get("/files", (req, res) => {
+  res.sendFile(path.resolve("uploads", "2026-07-21T16-53-50.655Z-1v_0_20260623153455_processed.mp4"));
+});
 app.use(bodyParser.json());
 app.use("/user", userroutes);
+app.use((req, res, next) => {
+  console.log(req.method, req.url);
+  next();
+});
 app.use("/video", videoroutes);
 app.use("/like", likeroutes);
 app.use("/watch", watchlaterroutes);
@@ -31,7 +49,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`server running on port ${PORT}`);
 });
-
+console.log("DB_URL =", process.env.DB_URL);
 const DBURL = process.env.DB_URL;
 mongoose
   .connect(DBURL)
