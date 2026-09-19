@@ -9,11 +9,9 @@ import likeroutes from "./routes/like.js";
 import watchlaterroutes from "./routes/watchlater.js";
 import historyrroutes from "./routes/history.js";
 import commentroutes from "./routes/comment.js";
-const result = dotenv.config();
-
-console.log(result);
-console.log("Current Dir:", process.cwd());
-console.log("ENV File Value:", process.env.DB_URL);
+if (!process.env.RENDER) {
+  dotenv.config();
+}
 const app = express();
 import path from "path";
 app.use(cors());
@@ -49,7 +47,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`server running on port ${PORT}`);
 });
-console.log("DB_URL =", process.env.DB_URL);
 const DBURL = process.env.DB_URL;
 mongoose
   .connect(DBURL)
