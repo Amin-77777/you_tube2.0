@@ -1,7 +1,9 @@
 import axios from "axios";
 
+import { getBackendUrl } from "./backendUrl";
+
 const axiosInstance = axios.create({
- baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+  baseURL: getBackendUrl(),
 });
 
 export default axiosInstance;
