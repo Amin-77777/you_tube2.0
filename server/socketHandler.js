@@ -45,7 +45,7 @@ export function setupSocketIO(io) {
     console.log(`[Socket Connected] ID: ${socket.id}`);
 
     // Join room handler
-    socket.on("join-room", ({ roomId, userName, avatar, passcode, isHostPreferred = false }) => {
+    socket.on("join-room", ({ roomId, userName, avatar, passcode, audioEnabled = true, videoEnabled = true, isHostPreferred = false }) => {
       if (!roomId) return;
       roomId = roomId.trim().toLowerCase();
       userName = userName?.trim() || "Guest " + socket.id.slice(0, 4);
@@ -94,6 +94,8 @@ export function setupSocketIO(io) {
           socketId: socket.id,
           userName,
           avatar: avatar || null,
+          audioEnabled: typeof audioEnabled === "boolean" ? audioEnabled : true,
+          videoEnabled: typeof videoEnabled === "boolean" ? videoEnabled : true,
           requestedAt: Date.now(),
         });
 
@@ -108,11 +110,11 @@ export function setupSocketIO(io) {
       }
 
       // User admitted directly into room
-      admitUserToRoom(socket, room, userName, avatar, isHost);
+      admitUserToRoom(socket, room, userName, avatar, isHost, audioEnabled, videoEnabled);
     });
 
     // Helper to complete joining room
-    function admitUserToRoom(s, room, userName, avatar, isHost) {
+    function admitUserToRoom(s, room, userName, avatar, isHost, audioEnabled = true, videoEnabled = true) {
       s.join(room.roomId);
 
       const participant = {
@@ -121,8 +123,8 @@ export function setupSocketIO(io) {
         avatar: avatar || null,
         isHost: isHost,
         isCoHost: false,
-        audioEnabled: true,
-        videoEnabled: true,
+        audioEnabled: typeof audioEnabled === "boolean" ? audioEnabled : true,
+        videoEnabled: typeof videoEnabled === "boolean" ? videoEnabled : true,
         isHandRaised: false,
         isSpeaking: false,
         connectionQuality: "good",
@@ -183,7 +185,15 @@ export function setupSocketIO(io) {
 
       if (approved) {
         targetSocket.emit("waiting-room-status", { inWaitingRoom: false });
-        admitUserToRoom(targetSocket, room, waitingUser.userName, waitingUser.avatar, false);
+        admitUserToRoom(
+          targetSocket,
+          room,
+          waitingUser.userName,
+          waitingUser.avatar,
+          false,
+          waitingUser.audioEnabled,
+          waitingUser.videoEnabled
+        );
       } else {
         targetSocket.emit("denied-entry", { message: "The host has declined your request to join." });
       }

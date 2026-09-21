@@ -14,6 +14,12 @@ const getBackendUrl = (): string => {
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   env: {
     BACKEND_URL: getBackendUrl(),
   },

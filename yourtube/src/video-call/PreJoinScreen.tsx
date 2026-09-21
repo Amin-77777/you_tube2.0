@@ -11,6 +11,8 @@ import {
   ArrowRight,
   Shield,
   Volume2,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +34,14 @@ interface PreJoinScreenProps {
   selectedVideoId: string;
   setSelectedVideoId: (id: string) => void;
   onJoin: () => void;
+  localStream?: MediaStream | null;
+  audioLevel?: number;
+  audioDevices?: MediaDeviceInfo[];
+  videoDevices?: MediaDeviceInfo[];
+  mediaError?: string | null;
+  onRetryMedia?: () => void;
+  onToggleAudio?: () => void;
+  onToggleVideo?: () => void;
 }
 
 export const PreJoinScreen: React.FC<PreJoinScreenProps> = ({
@@ -49,108 +59,43 @@ export const PreJoinScreen: React.FC<PreJoinScreenProps> = ({
   selectedVideoId,
   setSelectedVideoId,
   onJoin,
+  localStream,
+  audioLevel = 0,
+  audioDevices = [],
+  videoDevices = [],
+  mediaError,
+  onRetryMedia,
+  onToggleAudio,
+  onToggleVideo,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-
-  // Initialize preview stream
+  // Bind local stream to preview video element
   useEffect(() => {
-    let localStream: MediaStream | null = null;
-
-    async function setupPreview() {
-      try {
-        const constraints: MediaStreamConstraints = {
-          audio: selectedAudioId ? { deviceId: { exact: selectedAudioId } } : true,
-          video: selectedVideoId ? { deviceId: { exact: selectedVideoId } } : true,
-        };
-
-        const s = await navigator.mediaDevices.getUserMedia(constraints);
-        localStream = s;
-        setStream(s);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-        }
-
-        // Apply initial track states
-        const aTrack = s.getAudioTracks()[0];
-        if (aTrack) aTrack.enabled = isAudioEnabled;
-
-        const vTrack = s.getVideoTracks()[0];
-        if (vTrack) vTrack.enabled = isVideoEnabled;
-
-        // Mic volume level detection
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx && aTrack) {
-          const ctx = new AudioCtx();
-          audioContextRef.current = ctx;
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 256;
-          analyserRef.current = analyser;
-          const source = ctx.createMediaStreamSource(s);
-          source.connect(analyser);
-
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          const updateMeter = () => {
-            if (!analyserRef.current) return;
-            analyserRef.current.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-            const avg = sum / dataArray.length;
-            setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
-            animFrameRef.current = requestAnimationFrame(updateMeter);
-          };
-          updateMeter();
-        }
-
-        // Enumerate devices
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        setAudioDevices(devices.filter((d) => d.kind === "audioinput"));
-        setVideoDevices(devices.filter((d) => d.kind === "videoinput"));
-      } catch (err) {
-        console.warn("Camera/mic preview error:", err);
-      }
+    const videoEl = videoRef.current;
+    if (videoEl && localStream) {
+      videoEl.srcObject = localStream;
+      videoEl.play().catch((err) => {
+        console.warn("[PreJoinScreen] preview autoplay:", err);
+      });
     }
+  }, [localStream, isVideoEnabled]);
 
-    setupPreview();
-
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
-        audioContextRef.current.close().catch(() => {});
-      }
-      if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, [selectedAudioId, selectedVideoId]);
-
-  // Toggle audio track
   const handleToggleAudio = () => {
-    const newState = !isAudioEnabled;
-    setIsAudioEnabled(newState);
-    if (stream) {
-      const aTrack = stream.getAudioTracks()[0];
-      if (aTrack) aTrack.enabled = newState;
+    if (onToggleAudio) {
+      onToggleAudio();
+    } else {
+      setIsAudioEnabled(!isAudioEnabled);
     }
   };
 
-  // Toggle video track
   const handleToggleVideo = () => {
-    const newState = !isVideoEnabled;
-    setIsVideoEnabled(newState);
-    if (stream) {
-      const vTrack = stream.getVideoTracks()[0];
-      if (vTrack) vTrack.enabled = newState;
+    if (onToggleVideo) {
+      onToggleVideo();
+    } else {
+      setIsVideoEnabled(!isVideoEnabled);
     }
   };
 
@@ -162,11 +107,35 @@ export const PreJoinScreen: React.FC<PreJoinScreenProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const hasVideoTrack = Boolean(localStream?.getVideoTracks()?.length);
+  const showVideo = isVideoEnabled && hasVideoTrack;
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[85vh] w-full px-4 py-8 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
+    <div className="flex flex-col items-center justify-center min-h-[85vh] w-full px-4 py-8 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
       <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         {/* Left Column: Camera Preview */}
-        <div className="lg:col-span-7 flex flex-col items-center">
+        <div className="lg:col-span-7 flex flex-col items-center w-full">
+          {/* Hardware / Permission Warning Alert */}
+          {mediaError && (
+            <div className="w-full mb-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start justify-between gap-3 text-amber-200 text-xs shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                <span className="leading-relaxed">{mediaError}</span>
+              </div>
+              {onRetryMedia && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 shrink-0 border-amber-500/40 text-amber-300 hover:bg-amber-500/20 text-xs flex items-center gap-1.5"
+                  onClick={onRetryMedia}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Retry</span>
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="relative w-full aspect-video bg-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-gray-800 flex items-center justify-center">
             <video
               ref={videoRef}
@@ -174,16 +143,18 @@ export const PreJoinScreen: React.FC<PreJoinScreenProps> = ({
               playsInline
               muted
               className={`w-full h-full object-cover transform -scale-x-100 ${
-                !isVideoEnabled ? "hidden" : "block"
+                !showVideo ? "hidden" : "block"
               }`}
             />
 
-            {!isVideoEnabled && (
+            {!showVideo && (
               <div className="flex flex-col items-center justify-center text-center p-6 text-gray-400">
                 <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center text-3xl font-semibold text-white mb-3 shadow-inner">
                   {userName ? userName[0].toUpperCase() : "U"}
                 </div>
-                <p className="text-sm font-medium">Camera is turned off</p>
+                <p className="text-sm font-medium">
+                  {!hasVideoTrack ? "No camera detected" : "Camera is turned off"}
+                </p>
               </div>
             )}
 
@@ -203,12 +174,12 @@ export const PreJoinScreen: React.FC<PreJoinScreenProps> = ({
               <Button
                 type="button"
                 size="icon"
-                variant={isVideoEnabled ? "secondary" : "destructive"}
+                variant={showVideo ? "secondary" : "destructive"}
                 className="rounded-full w-10 h-10 transition-all"
                 onClick={handleToggleVideo}
-                title={isVideoEnabled ? "Turn Off Camera" : "Turn On Camera"}
+                title={showVideo ? "Turn Off Camera" : "Turn On Camera"}
               >
-                {isVideoEnabled ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                {showVideo ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
               </Button>
 
               <Button
@@ -239,34 +210,34 @@ export const PreJoinScreen: React.FC<PreJoinScreenProps> = ({
 
           {/* Device Settings Drawer / Box */}
           {showSettings && (
-            <div className="w-full mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border shadow-sm space-y-3">
+            <div className="w-full mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border shadow-sm space-y-3 animate-in fade-in zoom-in-95">
               <div>
-                <Label className="text-xs text-gray-500">Camera Device</Label>
+                <Label className="text-xs text-gray-500 dark:text-gray-400">Camera Device</Label>
                 <select
                   value={selectedVideoId}
                   onChange={(e) => setSelectedVideoId(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-900"
+                  className="w-full mt-1 px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Default Camera</option>
-                  {videoDevices.map((d) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Camera (${d.deviceId.slice(0, 5)})`}
+                  {videoDevices.map((d, index) => (
+                    <option key={d.deviceId || index} value={d.deviceId}>
+                      {d.label || `Camera ${index + 1}`}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <Label className="text-xs text-gray-500">Microphone Device</Label>
+                <Label className="text-xs text-gray-500 dark:text-gray-400">Microphone Device</Label>
                 <select
                   value={selectedAudioId}
                   onChange={(e) => setSelectedAudioId(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-900"
+                  className="w-full mt-1 px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Default Microphone</option>
-                  {audioDevices.map((d) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Microphone (${d.deviceId.slice(0, 5)})`}
+                  {audioDevices.map((d, index) => (
+                    <option key={d.deviceId || index} value={d.deviceId}>
+                      {d.label || `Microphone ${index + 1}`}
                     </option>
                   ))}
                 </select>

@@ -50,12 +50,56 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   onToggleCoHost,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    const videoEl = videoRef.current;
+    if (videoEl && stream) {
+      videoEl.srcObject = stream;
+      videoEl.play().catch((err) => {
+        console.warn("[VideoTile] Video AutoPlay error:", err);
+      });
     }
   }, [stream]);
+
+  // Dedicated audio playback for remote peers to ensure audio continues even when video is off
+  useEffect(() => {
+    const audioEl = audioRef.current;
+    if (audioEl && stream && !isLocal) {
+      audioEl.srcObject = stream;
+      audioEl.play().catch((err) => {
+        console.warn("[VideoTile] Audio AutoPlay error:", err);
+      });
+    }
+  }, [stream, isLocal]);
+
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (videoEl) {
+      videoEl.muted = isLocal;
+      videoEl.defaultMuted = isLocal;
+    }
+  }, [isLocal]);
+
+  // Handle browser autoplay policy on document interaction
+  useEffect(() => {
+    const handleGesture = () => {
+      if (audioRef.current && audioRef.current.paused && stream && !isLocal) {
+        audioRef.current.play().catch(() => {});
+      }
+      if (videoRef.current && videoRef.current.paused && stream) {
+        videoRef.current.play().catch(() => {});
+      }
+    };
+    window.addEventListener("click", handleGesture);
+    window.addEventListener("keydown", handleGesture);
+    window.addEventListener("touchstart", handleGesture);
+    return () => {
+      window.removeEventListener("click", handleGesture);
+      window.removeEventListener("keydown", handleGesture);
+      window.removeEventListener("touchstart", handleGesture);
+    };
+  }, [stream, isLocal]);
 
   // Connection quality icon
   const renderQualityIcon = () => {
@@ -81,7 +125,8 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     );
   };
 
-  const isVideoOff = !participant.videoEnabled;
+  const hasVideoTrack = Boolean(stream?.getVideoTracks()?.length);
+  const isVideoOff = !participant.videoEnabled || !hasVideoTrack;
   const isAudioMuted = !participant.audioEnabled;
 
   return (
@@ -92,15 +137,24 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           : "border-gray-800 hover:border-gray-700"
       }`}
     >
+      {/* Dedicated Remote Audio Playback Element */}
+      {!isLocal && (
+        <audio
+          ref={audioRef}
+          autoPlay
+          playsInline
+        />
+      )}
+
       {/* Video Element */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted={isLocal} // Mute local audio to prevent feedback loop
-        className={`w-full h-full object-cover ${
+        className={`w-full h-full object-cover transition-opacity duration-200 ${
           isLocal ? "transform -scale-x-100" : ""
-        } ${isVideoOff ? "hidden" : "block"}`}
+        } ${isVideoOff ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"}`}
       />
 
       {/* Avatar Placeholder when video is off */}

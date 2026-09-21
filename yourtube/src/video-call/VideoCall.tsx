@@ -65,6 +65,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
 
   // Hook for WebRTC & signaling
   const {
+    currentSocketId,
     localStream,
     remoteStreams,
     isJoined,
@@ -83,6 +84,11 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
     isHandRaised,
     recordedBlobUrl,
     setRecordedBlobUrl,
+    audioDevices,
+    videoDevices,
+    audioLevel,
+    mediaError,
+    initLocalStream,
     joinMeeting,
     leaveMeeting,
     toggleAudio,
@@ -295,38 +301,60 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
         setUserName={setUserName}
         passcode={passcode}
         setPasscode={setPasscode}
-        isAudioEnabled={initialAudio}
+        isAudioEnabled={isAudioEnabled}
         setIsAudioEnabled={setInitialAudio}
-        isVideoEnabled={initialVideo}
+        isVideoEnabled={isVideoEnabled}
         setIsVideoEnabled={setInitialVideo}
         selectedAudioId={selectedAudioId}
         setSelectedAudioId={setSelectedAudioId}
         selectedVideoId={selectedVideoId}
         setSelectedVideoId={setSelectedVideoId}
         onJoin={joinMeeting}
+        localStream={localStream}
+        audioLevel={audioLevel}
+        audioDevices={audioDevices}
+        videoDevices={videoDevices}
+        mediaError={mediaError}
+        onRetryMedia={initLocalStream}
+        onToggleAudio={toggleAudio}
+        onToggleVideo={toggleVideo}
       />
     );
   }
 
   // 4. In-Call Live Meeting
   // Find local participant object
-  const localParticipant = participants.find((p) => p.userName === userName) || {
-    socketId: "local",
-    userName: userName || "You",
-    isHost,
-    isCoHost,
-    audioEnabled: isAudioEnabled,
-    videoEnabled: isVideoEnabled,
-    isHandRaised,
-    isSpeaking: false,
-    connectionQuality: "good" as const,
-    joinedAt: Date.now(),
-  };
+  const matchedLocal =
+    participants.find((p) => currentSocketId && p.socketId === currentSocketId) ||
+    participants.find((p) => p.userName === userName);
+
+  const localParticipant = matchedLocal
+    ? {
+        ...matchedLocal,
+        audioEnabled: isAudioEnabled,
+        videoEnabled: isVideoEnabled,
+        isHandRaised,
+      }
+    : {
+        socketId: currentSocketId || "local",
+        userName: userName || "You",
+        isHost,
+        isCoHost,
+        audioEnabled: isAudioEnabled,
+        videoEnabled: isVideoEnabled,
+        isHandRaised,
+        isSpeaking: false,
+        connectionQuality: "good" as const,
+        joinedAt: Date.now(),
+      };
 
   // Remote participants list
-  const remoteParticipants = participants.filter(
-    (p) => p.userName !== userName
-  );
+  const remoteParticipants = participants.filter((p) => {
+    if (currentSocketId && p.socketId) {
+      return p.socketId !== currentSocketId;
+    }
+    return p.userName !== userName;
+  });
 
   // All tiles to render
   const allParticipants = [localParticipant, ...remoteParticipants];
