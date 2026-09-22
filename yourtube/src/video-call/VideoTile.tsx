@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Mic,
   MicOff,
@@ -15,6 +15,7 @@ import {
   SignalHigh,
   SignalMedium,
   SignalLow,
+  RotateCcw,
 } from "lucide-react";
 import { Participant } from "./types";
 import {
@@ -36,6 +37,7 @@ interface VideoTileProps {
   onForceMute?: (socketId: string) => void;
   onKick?: (socketId: string) => void;
   onToggleCoHost?: (socketId: string, currentStatus: boolean) => void;
+  onReconnect?: (socketId: string) => void;
 }
 
 export const VideoTile: React.FC<VideoTileProps> = ({
@@ -48,44 +50,81 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   onForceMute,
   onKick,
   onToggleCoHost,
+  onReconnect,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [trackRev, setTrackRev] = useState(0);
+  const [isAudioPlaybackBlocked, setIsAudioPlaybackBlocked] = useState(false);
 
+  // Monitor track additions, removals, and mute state changes reactively
   useEffect(() => {
-    const videoEl = videoRef.current;
-    if (videoEl && stream) {
-      videoEl.srcObject = stream;
-      videoEl.play().catch((err) => {
-        console.warn("[VideoTile] Video AutoPlay error:", err);
+    if (!stream) return;
+    const handleTrackChange = () => setTrackRev((r) => r + 1);
+
+    stream.addEventListener("addtrack", handleTrackChange);
+    stream.addEventListener("removetrack", handleTrackChange);
+
+    const tracks = stream.getTracks();
+    tracks.forEach((t) => {
+      t.addEventListener("mute", handleTrackChange);
+      t.addEventListener("unmute", handleTrackChange);
+      t.addEventListener("ended", handleTrackChange);
+    });
+
+    return () => {
+      stream.removeEventListener("addtrack", handleTrackChange);
+      stream.removeEventListener("removetrack", handleTrackChange);
+      tracks.forEach((t) => {
+        t.removeEventListener("mute", handleTrackChange);
+        t.removeEventListener("unmute", handleTrackChange);
+        t.removeEventListener("ended", handleTrackChange);
       });
-    }
+    };
   }, [stream]);
 
-  // Dedicated audio playback for remote peers to ensure audio continues even when video is off
-  useEffect(() => {
-    const audioEl = audioRef.current;
-    if (audioEl && stream && !isLocal) {
-      audioEl.srcObject = stream;
-      audioEl.play().catch((err) => {
-        console.warn("[VideoTile] Audio AutoPlay error:", err);
-      });
-    }
-  }, [stream, isLocal]);
-
+  // Attach video stream - video element is ALWAYS muted to guarantee immediate, unrestricted autoplay
   useEffect(() => {
     const videoEl = videoRef.current;
     if (videoEl) {
-      videoEl.muted = isLocal;
-      videoEl.defaultMuted = isLocal;
+      videoEl.muted = true;
+      videoEl.defaultMuted = true;
+      if (stream) {
+        if (videoEl.srcObject !== stream) {
+          videoEl.srcObject = stream;
+        }
+        videoEl.play().catch((err) => {
+          console.warn("[VideoTile] Video play error:", err);
+        });
+      }
     }
-  }, [isLocal]);
+  }, [stream, trackRev]);
+
+  // Dedicated audio playback for remote peers
+  useEffect(() => {
+    const audioEl = audioRef.current;
+    if (audioEl && stream && !isLocal) {
+      if (audioEl.srcObject !== stream) {
+        audioEl.srcObject = stream;
+      }
+      audioEl
+        .play()
+        .then(() => setIsAudioPlaybackBlocked(false))
+        .catch((err) => {
+          console.warn("[VideoTile] Remote Audio Autoplay restricted by browser:", err);
+          setIsAudioPlaybackBlocked(true);
+        });
+    }
+  }, [stream, isLocal, trackRev]);
 
   // Handle browser autoplay policy on document interaction
   useEffect(() => {
     const handleGesture = () => {
-      if (audioRef.current && audioRef.current.paused && stream && !isLocal) {
-        audioRef.current.play().catch(() => {});
+      if (audioRef.current && stream && !isLocal) {
+        audioRef.current
+          .play()
+          .then(() => setIsAudioPlaybackBlocked(false))
+          .catch(() => {});
       }
       if (videoRef.current && videoRef.current.paused && stream) {
         videoRef.current.play().catch(() => {});
@@ -119,13 +158,16 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       );
     }
     return (
-      <span title="Connection: Poor" className="flex items-center text-rose-500">
+      <span title="Connection: Poor / Relaying" className="flex items-center text-rose-500">
         <SignalLow className="w-3.5 h-3.5" />
       </span>
     );
   };
 
-  const hasVideoTrack = Boolean(stream?.getVideoTracks()?.length);
+  const activeVideoTracks = stream
+    ? stream.getVideoTracks().filter((t) => t.readyState === "live")
+    : [];
+  const hasVideoTrack = activeVideoTracks.length > 0;
   const isVideoOff = !participant.videoEnabled || !hasVideoTrack;
   const isAudioMuted = !participant.audioEnabled;
 
@@ -146,16 +188,34 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         />
       )}
 
-      {/* Video Element */}
+      {/* Video Element - Muted so that all browsers allow autoplay unconditionally */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted={isLocal} // Mute local audio to prevent feedback loop
+        muted={true}
         className={`w-full h-full object-cover transition-opacity duration-200 ${
           isLocal ? "transform -scale-x-100" : ""
         } ${isVideoOff ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"}`}
       />
+
+      {/* Autoplay blocked recovery banner */}
+      {!isLocal && isAudioPlaybackBlocked && participant.audioEnabled && (
+        <button
+          onClick={() => {
+            if (audioRef.current) {
+              audioRef.current
+                .play()
+                .then(() => setIsAudioPlaybackBlocked(false))
+                .catch(() => {});
+            }
+          }}
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded-full text-xs font-semibold shadow-lg animate-pulse transition-transform"
+        >
+          <Mic className="w-3.5 h-3.5" />
+          <span>Click to hear audio</span>
+        </button>
+      )}
 
       {/* Avatar Placeholder when video is off */}
       {isVideoOff && (
@@ -194,6 +254,17 @@ export const VideoTile: React.FC<VideoTileProps> = ({
             title={isPinned ? "Unpin video" : "Pin video"}
           >
             {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+          </button>
+        )}
+
+        {/* Reconnect button for connection difficulties */}
+        {onReconnect && !isLocal && participant.connectionQuality === "poor" && (
+          <button
+            onClick={() => onReconnect(participant.socketId)}
+            className="p-1.5 rounded-full backdrop-blur-md bg-amber-600/80 hover:bg-amber-600 text-white transition-colors animate-pulse"
+            title="Re-establish peer connection (restart ICE)"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
         )}
 

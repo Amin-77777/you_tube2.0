@@ -68,6 +68,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
     currentSocketId,
     localStream,
     remoteStreams,
+    reconnectPeer,
     isJoined,
     inWaitingRoom,
     waitingRoomMessage,
@@ -494,6 +495,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
                       onForceMute={forceMuteParticipant}
                       onKick={kickParticipant}
                       onToggleCoHost={(id, cur) => setCoHostStatus(id, !cur)}
+                      onReconnect={reconnectPeer}
                     />
                   );
                 })()}
@@ -530,6 +532,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
                           onToggleCoHost={(id, cur) =>
                             setCoHostStatus(id, !cur)
                           }
+                          onReconnect={reconnectPeer}
                         />
                       </div>
                     );
@@ -564,6 +567,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
                       onForceMute={forceMuteParticipant}
                       onKick={kickParticipant}
                       onToggleCoHost={(id, cur) => setCoHostStatus(id, !cur)}
+                      onReconnect={reconnectPeer}
                     />
                   </div>
                 );

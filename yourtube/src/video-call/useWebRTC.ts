@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { getSocket } from "@/lib/socket";
+import { getBackendUrl } from "@/lib/backendUrl";
 import {
   Participant,
   ChatMessage,
@@ -10,35 +11,79 @@ import {
 } from "./types";
 import { toast } from "sonner";
 
-const getIceConfiguration = (): RTCConfiguration => {
-  const iceServers: RTCIceServer[] = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-    { urls: "stun:stun.cloudflare.com:3478" },
-    { urls: "stun:global.stun.twilio.com:3478" },
-    { urls: "stun:stun.services.mozilla.com" },
-  ];
+const DEFAULT_STUN_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:stun3.l.google.com:19302" },
+  { urls: "stun:stun4.l.google.com:19302" },
+  { urls: "stun:stun.cloudflare.com:3478" },
+  { urls: "stun:global.stun.twilio.com:3478" },
+  { urls: "stun:stun.services.mozilla.com" },
+];
 
-  // If a custom TURN server is specified via environment variables (e.g. Metered.ca, Twilio, Coturn)
-  if (process.env.NEXT_PUBLIC_TURN_URL) {
-    const urls = process.env.NEXT_PUBLIC_TURN_URL.split(",").map((u) => u.trim());
-    iceServers.push({
+let globalCachedIceConfig: RTCConfiguration = {
+  iceServers: DEFAULT_STUN_SERVERS,
+  iceCandidatePoolSize: 10,
+};
+
+// Check for client-side environment variables on module load
+if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_TURN_URL) {
+  const urls = process.env.NEXT_PUBLIC_TURN_URL.split(",").map((u) => u.trim());
+  globalCachedIceConfig.iceServers = [
+    {
       urls,
       username: process.env.NEXT_PUBLIC_TURN_USERNAME,
       credential: process.env.NEXT_PUBLIC_TURN_PASSWORD,
-    });
+    },
+    ...DEFAULT_STUN_SERVERS,
+  ];
+}
+
+// Asynchronously refresh ICE configuration from backend or Metered
+async function fetchLatestIceConfig(): Promise<RTCConfiguration> {
+  try {
+    // 1. If Metered domain & key are set on frontend
+    if (
+      typeof process !== "undefined" &&
+      process.env?.NEXT_PUBLIC_METERED_DOMAIN &&
+      process.env?.NEXT_PUBLIC_METERED_API_KEY
+    ) {
+      const res = await fetch(
+        `https://${process.env.NEXT_PUBLIC_METERED_DOMAIN}.metered.live/api/v1/turn/credentials?apiKey=${process.env.NEXT_PUBLIC_METERED_API_KEY}`
+      );
+      if (res.ok) {
+        const servers = await res.json();
+        if (Array.isArray(servers) && servers.length > 0) {
+          globalCachedIceConfig = {
+            iceServers: [...servers, ...DEFAULT_STUN_SERVERS],
+            iceCandidatePoolSize: 10,
+          };
+          console.log("[WebRTC] Loaded Metered TURN servers from frontend env");
+          return globalCachedIceConfig;
+        }
+      }
+    }
+
+    // 2. Fetch from backend /api/turn-credentials
+    const backendUrl = getBackendUrl();
+    const res = await fetch(`${backendUrl}/api/turn-credentials`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+        globalCachedIceConfig = {
+          iceServers: data.iceServers,
+          iceCandidatePoolSize: 10,
+        };
+        console.log("[WebRTC] Loaded ICE servers from backend:", data.iceServers.length, "servers");
+        return globalCachedIceConfig;
+      }
+    }
+  } catch (err) {
+    console.warn("[WebRTC] Could not fetch remote ICE configuration, using default STUN:", err);
   }
-
-  return {
-    iceServers,
-    iceCandidatePoolSize: 10,
-  };
-};
-
-const ICE_SERVERS = getIceConfiguration();
+  return globalCachedIceConfig;
+}
 
 interface UseWebRTCProps {
   roomId: string;
@@ -133,18 +178,50 @@ export function useWebRTC({
     };
   }, [socket]);
 
-  // Keep localStreamRef synced and ensure all peers have local tracks
+  // Peer connection state tracking
+  const [peerConnectionStates, setPeerConnectionStates] = useState<{
+    [socketId: string]: {
+      connectionState: RTCPeerConnectionState;
+      iceConnectionState: RTCIceConnectionState;
+    };
+  }>({});
+
+  // Asynchronously fetch latest ICE configuration from backend / Metered on mount
+  useEffect(() => {
+    fetchLatestIceConfig().catch(() => {});
+  }, []);
+
+  // Keep localStreamRef synced and ensure all peers have local tracks via transceivers
   useEffect(() => {
     localStreamRef.current = localStream;
     if (localStream) {
       peersRef.current.forEach((pc) => {
-        const senders = pc.getSenders();
         localStream.getTracks().forEach((track) => {
-          const sender = senders.find((s) => s.track && s.track.kind === track.kind);
-          if (sender) {
-            sender.replaceTrack(track).catch((err) => console.warn("replaceTrack error:", err));
+          const transceivers = pc.getTransceivers();
+          const transceiver = transceivers.find(
+            (t) =>
+              (t.receiver?.track && t.receiver.track.kind === track.kind) ||
+              (t.sender?.track && t.sender.track.kind === track.kind)
+          );
+          if (transceiver && transceiver.sender) {
+            transceiver.sender
+              .replaceTrack(track)
+              .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
           } else {
-            pc.addTrack(track, localStream);
+            const sender = pc
+              .getSenders()
+              .find((s) => s.track && s.track.kind === track.kind);
+            if (sender) {
+              sender
+                .replaceTrack(track)
+                .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
+            } else {
+              try {
+                pc.addTrack(track, localStream);
+              } catch (e) {
+                console.warn("[WebRTC] addTrack error:", e);
+              }
+            }
           }
         });
       });
@@ -402,7 +479,8 @@ export function useWebRTC({
         return peersRef.current.get(targetSocketId)!;
       }
 
-      const pc = new RTCPeerConnection(ICE_SERVERS);
+      console.log(`[WebRTC] Creating RTCPeerConnection for ${targetSocketId} with ${globalCachedIceConfig.iceServers?.length || 0} ICE servers`);
+      const pc = new RTCPeerConnection(globalCachedIceConfig);
 
       // Add local stream tracks or transceivers to ensure bidirectional audio & video
       const activeStream = screenStreamRef.current || localStreamRef.current;
@@ -428,6 +506,11 @@ export function useWebRTC({
       // Handle ICE candidates safely
       pc.onicecandidate = (event) => {
         if (event.candidate) {
+          const candStr = event.candidate.candidate || "";
+          const typeMatch = candStr.match(/typ\s+(\w+)/);
+          const candType = typeMatch ? typeMatch[1] : "unknown";
+          console.log(`[WebRTC] Local candidate generated (${candType}) for ${targetSocketId}`);
+
           const candidateData = event.candidate.toJSON
             ? event.candidate.toJSON()
             : {
@@ -444,23 +527,26 @@ export function useWebRTC({
 
       // Handle incoming remote stream tracks
       pc.ontrack = (event) => {
-        console.log(`[WebRTC] ontrack received ${event.track.kind} from ${targetSocketId}`);
+        console.log(
+          `[WebRTC] ontrack received ${event.track.kind} (${event.track.id}) from ${targetSocketId}`
+        );
         setRemoteStreams((prev) => {
           const existing = prev[targetSocketId];
-          let updatedTracks: MediaStreamTrack[] = [];
+          const stream =
+            event.streams && event.streams[0]
+              ? event.streams[0]
+              : existing || new MediaStream();
 
-          if (existing) {
-            updatedTracks = existing.getTracks().filter((t) => t.id !== event.track.id);
-            updatedTracks.push(event.track);
-          } else if (event.streams && event.streams[0]) {
-            updatedTracks = event.streams[0].getTracks();
-          } else {
-            updatedTracks = [event.track];
+          if (!stream.getTracks().some((t) => t.id === event.track.id)) {
+            stream.addTrack(event.track);
           }
 
+          const activeTracks = stream
+            .getTracks()
+            .filter((t) => t.readyState !== "ended");
           return {
             ...prev,
-            [targetSocketId]: new MediaStream(updatedTracks),
+            [targetSocketId]: new MediaStream(activeTracks),
           };
         });
       };
@@ -480,12 +566,30 @@ export function useWebRTC({
               : p
           )
         );
+
+        setPeerConnectionStates((prev) => ({
+          ...prev,
+          [targetSocketId]: {
+            connectionState: state,
+            iceConnectionState: pc.iceConnectionState,
+          },
+        }));
       };
 
       pc.oniceconnectionstatechange = () => {
-        console.log(`[WebRTC] ICE state (${targetSocketId}): ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === "failed") {
-          console.warn(`[WebRTC] ICE connection failed with ${targetSocketId}. Retrying...`);
+        const iceState = pc.iceConnectionState;
+        console.log(`[WebRTC] ICE state (${targetSocketId}): ${iceState}`);
+
+        setPeerConnectionStates((prev) => ({
+          ...prev,
+          [targetSocketId]: {
+            connectionState: pc.connectionState,
+            iceConnectionState: iceState,
+          },
+        }));
+
+        if (iceState === "failed") {
+          console.warn(`[WebRTC] ICE connection failed with ${targetSocketId}. Retrying via restartIce...`);
           try {
             pc.restartIce();
           } catch (e) {
@@ -563,12 +667,29 @@ export function useWebRTC({
           setupAudioDetection(stream);
 
           peersRef.current.forEach((pc) => {
-            const senders = pc.getSenders();
-            const sender = senders.find((s) => s.track && s.track.kind === "audio");
-            if (sender) {
-              sender.replaceTrack(newTrack).catch((err) => console.warn("replaceTrack error:", err));
+            const transceivers = pc.getTransceivers();
+            const transceiver = transceivers.find(
+              (t) =>
+                (t.receiver?.track && t.receiver.track.kind === "audio") ||
+                (t.sender?.track && t.sender.track.kind === "audio")
+            );
+            if (transceiver && transceiver.sender) {
+              transceiver.sender
+                .replaceTrack(newTrack)
+                .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
             } else {
-              pc.addTrack(newTrack, stream!);
+              const sender = pc
+                .getSenders()
+                .find((s) => s.track && s.track.kind === "audio");
+              if (sender) {
+                sender
+                  .replaceTrack(newTrack)
+                  .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
+              } else {
+                try {
+                  pc.addTrack(newTrack, stream!);
+                } catch (e) {}
+              }
             }
           });
 
@@ -620,12 +741,29 @@ export function useWebRTC({
           setIsVideoEnabled(true);
 
           peersRef.current.forEach((pc) => {
-            const senders = pc.getSenders();
-            const sender = senders.find((s) => s.track && s.track.kind === "video");
-            if (sender) {
-              sender.replaceTrack(newTrack).catch((err) => console.warn("replaceTrack error:", err));
+            const transceivers = pc.getTransceivers();
+            const transceiver = transceivers.find(
+              (t) =>
+                (t.receiver?.track && t.receiver.track.kind === "video") ||
+                (t.sender?.track && t.sender.track.kind === "video")
+            );
+            if (transceiver && transceiver.sender) {
+              transceiver.sender
+                .replaceTrack(newTrack)
+                .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
             } else {
-              pc.addTrack(newTrack, stream!);
+              const sender = pc
+                .getSenders()
+                .find((s) => s.track && s.track.kind === "video");
+              if (sender) {
+                sender
+                  .replaceTrack(newTrack)
+                  .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
+              } else {
+                try {
+                  pc.addTrack(newTrack, stream!);
+                } catch (e) {}
+              }
             }
           });
 
@@ -669,14 +807,27 @@ export function useWebRTC({
 
         // Replace track on all active peer connections
         peersRef.current.forEach((pc) => {
-          const senders = pc.getSenders();
-          const videoSender = senders.find(
-            (s) => s.track && s.track.kind === "video"
+          const transceivers = pc.getTransceivers();
+          const transceiver = transceivers.find(
+            (t) =>
+              (t.receiver?.track && t.receiver.track.kind === "video") ||
+              (t.sender?.track && t.sender.track.kind === "video")
           );
-          if (videoSender) {
-            videoSender.replaceTrack(newTrack).catch((err) => console.warn("replaceTrack error:", err));
+          if (transceiver && transceiver.sender) {
+            transceiver.sender
+              .replaceTrack(newTrack)
+              .catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
           } else {
-            pc.addTrack(newTrack, localStreamRef.current!);
+            const videoSender = pc.getSenders().find(
+              (s) => s.track && s.track.kind === "video"
+            );
+            if (videoSender) {
+              videoSender.replaceTrack(newTrack).catch((err) => console.warn("[WebRTC] replaceTrack error:", err));
+            } else {
+              try {
+                pc.addTrack(newTrack, localStreamRef.current!);
+              } catch (e) {}
+            }
           }
         });
 
@@ -711,12 +862,21 @@ export function useWebRTC({
 
       // Replace track on all RTCPeerConnections
       peersRef.current.forEach((pc) => {
-        const senders = pc.getSenders();
-        const videoSender = senders.find(
-          (s) => s.track && s.track.kind === "video"
+        const transceivers = pc.getTransceivers();
+        const transceiver = transceivers.find(
+          (t) =>
+            (t.receiver?.track && t.receiver.track.kind === "video") ||
+            (t.sender?.track && t.sender.track.kind === "video")
         );
-        if (videoSender) {
-          videoSender.replaceTrack(screenVideoTrack);
+        if (transceiver && transceiver.sender) {
+          transceiver.sender.replaceTrack(screenVideoTrack).catch((err) => console.warn("replaceTrack error:", err));
+        } else {
+          const videoSender = pc.getSenders().find(
+            (s) => s.track && s.track.kind === "video"
+          );
+          if (videoSender) {
+            videoSender.replaceTrack(screenVideoTrack).catch((err) => console.warn("replaceTrack error:", err));
+          }
         }
       });
 
@@ -752,12 +912,21 @@ export function useWebRTC({
     const webcamVideoTrack = localStreamRef.current?.getVideoTracks()[0];
     if (webcamVideoTrack) {
       peersRef.current.forEach((pc) => {
-        const senders = pc.getSenders();
-        const videoSender = senders.find(
-          (s) => s.track && s.track.kind === "video"
+        const transceivers = pc.getTransceivers();
+        const transceiver = transceivers.find(
+          (t) =>
+            (t.receiver?.track && t.receiver.track.kind === "video") ||
+            (t.sender?.track && t.sender.track.kind === "video")
         );
-        if (videoSender) {
-          videoSender.replaceTrack(webcamVideoTrack);
+        if (transceiver && transceiver.sender) {
+          transceiver.sender.replaceTrack(webcamVideoTrack).catch((err) => console.warn("replaceTrack error:", err));
+        } else {
+          const videoSender = pc.getSenders().find(
+            (s) => s.track && s.track.kind === "video"
+          );
+          if (videoSender) {
+            videoSender.replaceTrack(webcamVideoTrack).catch((err) => console.warn("replaceTrack error:", err));
+          }
         }
       });
     }
@@ -1146,7 +1315,7 @@ export function useWebRTC({
     });
 
     // Admitted to room from waiting room
-    socket.on("admitted-to-room", (data) => {
+    socket.on("admitted-to-room", async (data) => {
       setInWaitingRoom(false);
       setIsJoined(true);
       setIsHost(data.isHost);
@@ -1155,6 +1324,22 @@ export function useWebRTC({
       setRoomSettings(data.settings);
       setChatMessages(data.chatHistory || []);
       toast.success("Admitted to meeting!");
+
+      // If there are other participants already in room, initiate WebRTC offer to each
+      data.participants.forEach(async (participant: Participant) => {
+        if (participant.socketId === socket.id) return;
+        try {
+          const pc = createPeerConnection(participant.socketId);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit("offer", {
+            target: participant.socketId,
+            offer,
+          });
+        } catch (err) {
+          console.error("Error creating offer after admittance:", err);
+        }
+      });
     });
 
     // Denied entry
@@ -1278,11 +1463,27 @@ export function useWebRTC({
     };
   }, [cleanupAudioDetection]);
 
+  // Manually trigger ICE restart for a given peer
+  const reconnectPeer = useCallback((targetSocketId: string) => {
+    const pc = peersRef.current.get(targetSocketId);
+    if (pc) {
+      try {
+        console.log(`[WebRTC] Manual reconnect / restartIce requested for ${targetSocketId}`);
+        pc.restartIce();
+        toast.info("Reconnecting peer connection...");
+      } catch (e) {
+        console.warn("restartIce error:", e);
+      }
+    }
+  }, []);
+
   return {
     currentSocketId,
     localStream,
     screenStream,
     remoteStreams,
+    peerConnectionStates,
+    reconnectPeer,
     isJoined,
     inWaitingRoom,
     waitingRoomMessage,
