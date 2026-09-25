@@ -8,12 +8,15 @@ import {
   Share,
   ThumbsDown,
   ThumbsUp,
+  Image as ImageIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
+import EditThumbnailModal from "./EditThumbnailModal";
 
-const VideoInfo = ({ video }: any) => {
+const VideoInfo = ({ video, onVideoUpdate }: any) => {
+  const [currentVideo, setCurrentVideo] = useState(video);
   const [likes, setlikes] = useState(video.Like || 0);
   const [dislikes, setDislikes] = useState(video.Dislike || 0);
   const [isLiked, setIsLiked] = useState(false);
@@ -21,6 +24,11 @@ const VideoInfo = ({ video }: any) => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const { user } = useUser();
   const [isWatchLater, setIsWatchLater] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    setCurrentVideo(video);
+  }, [video]);
 
   // const user: any = {
   //   id: "1",
@@ -170,6 +178,15 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
+            className="bg-gray-100 hover:bg-gray-200 rounded-full text-blue-600 font-medium"
+            onClick={() => setIsEditModalOpen(true)}
+          >
+            <ImageIcon className="w-5 h-5 mr-1.5 text-blue-600" />
+            Change Thumbnail
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             className="bg-gray-100 rounded-full"
           >
             <Share className="w-5 h-5 mr-2" />
@@ -192,6 +209,20 @@ const VideoInfo = ({ video }: any) => {
           </Button>
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <EditThumbnailModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          video={currentVideo}
+          onSuccess={(updated) => {
+            setCurrentVideo(updated);
+            if (onVideoUpdate) {
+              onVideoUpdate(updated);
+            }
+          }}
+        />
+      )}
       <div className="bg-gray-100 rounded-lg p-4">
         <div className="flex gap-4 text-sm font-medium mb-2">
           <span>{video.views.toLocaleString()} views</span>

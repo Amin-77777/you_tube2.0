@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import axiosInstance from "@/lib/axiosinstance";
 import { useUser } from "@/lib/AuthContext";
-import { getBackendUrl } from "@/lib/backendUrl";
+import { getThumbnailSrc, getUniqueFallbackThumbnail } from "@/lib/videoUtils";
 
 export default function HistoryContent() {
   const [history, setHistory] = useState<any[]>([]);
@@ -78,7 +78,7 @@ export default function HistoryContent() {
       </div>
     );
   }
-  const videos = "/video/vdo.mp4";
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -88,12 +88,19 @@ export default function HistoryContent() {
       <div className="space-y-4">
         {history.map((item) => (
           <div key={item._id} className="flex gap-4 group">
-            <Link href={`/watch/${item.videoid._id}`} className="flex-shrink-0">
-              <div className="relative w-40 aspect-video bg-gray-100 rounded overflow-hidden">
-                <video
-                  src={`${getBackendUrl()}/${item.videoid?.filepath?.replace(/\\/g, "/")}`}
-                  className="object-cover group-hover:scale-105 transition-transform duration-200"
+            <Link href={`/watch/${item.videoid?._id}`} className="flex-shrink-0">
+              <div className="relative w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <img
+                  src={getThumbnailSrc(item.videoid)}
+                  alt={item.videoid?.videotitle || "Video thumbnail"}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  onError={(e: any) => {
+                    e.target.src = getUniqueFallbackThumbnail(item.videoid?._id || item.videoid?.videotitle);
+                  }}
                 />
+                <div className="absolute bottom-1 right-1 bg-black/85 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow">
+                  {item.videoid?.duration || "0:30"}
+                </div>
               </div>
             </Link>
 

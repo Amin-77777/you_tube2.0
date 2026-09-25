@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "seed": "node seed.js",
+    "upload-video": "node upload-video-cli.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

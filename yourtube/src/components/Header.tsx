@@ -1,4 +1,4 @@
-import { Bell, Menu, Mic, Search, User, VideoIcon } from "lucide-react";
+import { Bell, Menu, Mic, Search, Upload, User, VideoIcon } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -12,19 +12,15 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Channeldialogue from "./channeldialogue";
+import UploadVideoModal from "./UploadVideoModal";
 import { useRouter } from "next/router";
 import { useUser } from "@/lib/AuthContext";
 
 const Header = () => {
   const { user, logout, handlegooglesignin } = useUser();
-  // const user: any = {
-  //   id: "1",
-  //   name: "John Doe",
-  //   email: "john@example.com",
-  //   image: "https://github.com/shadcn.png?height=32&width=32",
-  // };
   const [searchQuery, setSearchQuery] = useState("");
   const [isdialogeopen, setisdialogeopen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const router = useRouter();
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +74,16 @@ const Header = () => {
         </Button>
       </form>
       <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsUploadModalOpen(true)}
+          className="flex items-center gap-1.5 font-medium rounded-full border-gray-300 hover:bg-gray-100 px-3 py-1 text-sm shadow-sm"
+          title="Upload Video"
+        >
+          <Upload className="w-4 h-4 text-red-600" />
+          <span className="hidden sm:inline">Upload</span>
+        </Button>
         {user ? (
           <>
             <Link href="/video-call" title="Start or Join Video Call">
@@ -143,6 +149,10 @@ const Header = () => {
           </>
         )}{" "}
       </div>
+      <UploadVideoModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+      />
       <Channeldialogue
         isopen={isdialogeopen}
         onclose={() => setisdialogeopen(false)}

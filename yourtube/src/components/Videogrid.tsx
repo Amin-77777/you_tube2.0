@@ -48,14 +48,22 @@ const Videogrid = () => {
   //     createdAt: new Date(Date.now() - 86400000).toISOString(),
   //   },
   // ];
+  const handleVideoUpdate = (updatedVideo: any) => {
+    setvideo((prev) =>
+      prev.map((v) => (v._id === updatedVideo._id ? updatedVideo : v))
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {loading ? (
-        <>Loading..</>
+        <div className="col-span-full py-12 text-center text-gray-500 animate-pulse">
+          Loading videos...
+        </div>
       ) : (
         videos?.map((video: any) => (
-  <Videocard key={video._id} video={video} />
-))
+          <Videocard key={video._id} video={video} onVideoUpdate={handleVideoUpdate} />
+        ))
       )}
     </div>
   );
