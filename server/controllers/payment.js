@@ -70,7 +70,7 @@ export const createOrder = async (req, res) => {
       razorpayOrderId: razorpayOrder.id,
       plan: planId,
       duration: priceCalc.duration.id,
-      amount: priceCalc.amount,
+      amount: priceCalc.amountInPaise,
       currency: priceCalc.currency,
       status: "PENDING",
       paymentMethod: "razorpay_test",
