@@ -50,6 +50,13 @@ export async function sendSubscriptionConfirmationEmail({
     year: "numeric",
   });
 
+  const numVal = amount > 1000 ? amount / 100 : Number(amount);
+  const displayAmount = numVal.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const currencySymbol = currency === "INR" ? "₹" : currency;
+
   const featureItemsHtml = features
     .map(
       (f) =>
@@ -89,7 +96,7 @@ export async function sendSubscriptionConfirmationEmail({
               </tr>
               <tr>
                 <td style="padding: 6px 0; color: #6b7280;">Amount Paid:</td>
-                <td style="padding: 6px 0; color: #111827; font-weight: 700; text-align: right;">${currency} ${amount}</td>
+                <td style="padding: 6px 0; color: #111827; font-weight: 700; text-align: right;">${currencySymbol} ${displayAmount}</td>
               </tr>
               <tr>
                 <td style="padding: 6px 0; color: #6b7280;">Payment ID:</td>
@@ -142,5 +149,106 @@ export async function sendSubscriptionConfirmationEmail({
 
   // Simulation mode: logged and saved
   console.log(`[Email Service] Simulated purchase confirmation email generated for ${toEmail} (${invoiceNumber})`);
+  return { sent: true, mode: "simulation", previewHtml: emailHtml };
+}
+
+/**
+ * Generates and sends a branded subscription cancellation notification email
+ */
+export async function sendSubscriptionCancellationEmail({
+  toEmail,
+  userName,
+  planName,
+  expiryDate,
+  immediate = false,
+}) {
+  const formattedExpiry = expiryDate
+    ? new Date(expiryDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "end of current billing cycle";
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Subscription Cancelled — YourTube</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 24px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <div style="background-color: #1f2937; padding: 24px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 800;">YourTube Subscription</h1>
+          <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Cancellation Notice</p>
+        </div>
+
+        <div style="padding: 32px 24px;">
+          <h2 style="font-size: 18px; color: #111827; margin-top: 0;">Hello ${userName || "Subscriber"},</h2>
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">
+            ${
+              immediate
+                ? `Your <strong>${planName}</strong> subscription has been cancelled immediately, and your account has been reverted to the Free plan.`
+                : `We received your request to cancel auto-renewal for your <strong>${planName}</strong> subscription. No further recurring charges will be made to your account.`
+            }
+          </p>
+
+          <div style="background-color: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb; padding: 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <tr>
+                <td style="padding: 6px 0; color: #6b7280;">Cancelled Plan:</td>
+                <td style="padding: 6px 0; color: #111827; font-weight: 700; text-align: right;">${planName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6b7280;">Benefits Active Until:</td>
+                <td style="padding: 6px 0; color: #dc2626; font-weight: 700; text-align: right;">${immediate ? "Immediately expired" : formattedExpiry}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6b7280;">Subsequent Tier:</td>
+                <td style="padding: 6px 0; color: #111827; font-weight: 700; text-align: right;">Free (Standard)</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6b7280;">Future Invoices:</td>
+                <td style="padding: 6px 0; color: #059669; font-weight: 700; text-align: right;">None (Cancelled)</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="color: #4b5563; font-size: 13px; line-height: 1.6;">
+            <strong>Important Note:</strong> Your account, watch history, offline downloads, and past billing receipts remain safely preserved. You can rejoin or upgrade to any plan whenever you are ready.
+          </p>
+
+          <div style="text-align: center; margin: 28px 0 16px 0;">
+            <a href="https://youtube-frontend-dc7c.onrender.com/subscriptions" style="background-color: #dc2626; color: #ffffff; padding: 12px 24px; border-radius: 9999px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">
+              Explore Subscription Plans
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; font-size: 12px; color: #9ca3af; text-align: center;">
+            <p style="margin: 0;">Have questions or feedback? Contact us at support@yourtube.app</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  if (transporter && toEmail) {
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || '"YourTube" <noreply@yourtube.app>',
+        to: toEmail,
+        subject: `Subscription Cancelled — YourTube (${planName})`,
+        html: emailHtml,
+      });
+      console.log(`[Email Service] Cancellation email sent to ${toEmail}`);
+      return { sent: true, mode: "smtp" };
+    } catch (err) {
+      console.warn("[Email Service] Failed to send SMTP cancellation email:", err.message);
+    }
+  }
+
+  console.log(`[Email Service] Simulated cancellation email generated for ${toEmail} (${planName})`);
   return { sent: true, mode: "simulation", previewHtml: emailHtml };
 }

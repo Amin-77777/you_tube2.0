@@ -1,6 +1,11 @@
 import Subscription from "../Modals/Subscription.js";
+import User from "../Modals/Auth.js";
 import { DOWNLOAD_CONFIG, getPlanDailyLimit } from "../config/downloadConfig.js";
 import { SUBSCRIPTION_CONFIG } from "../config/subscriptionPlans.js";
+import {
+  sendSubscriptionConfirmationEmail,
+  sendSubscriptionCancellationEmail,
+} from "../services/emailService.js";
 
 /**
  * Get or initialize user's current subscription.
@@ -145,9 +150,37 @@ export const upgradeSubscription = async (req, res) => {
 
     await sub.save();
 
+    // Trigger notification email
+    const userDoc = await User.findById(req.userId);
+    if (userDoc?.email) {
+      if (plan === "Free" && previousPlan !== "Free") {
+        sendSubscriptionCancellationEmail({
+          toEmail: userDoc.email,
+          userName: userDoc.name,
+          planName: previousPlan,
+          immediate: true,
+        }).catch((err) => console.warn("[Upgrade Cancel Email] Warning:", err.message));
+      } else if (plan !== "Free") {
+        sendSubscriptionConfirmationEmail({
+          toEmail: userDoc.email,
+          userName: userDoc.name,
+          planName: plan,
+          planTier: SUBSCRIPTION_CONFIG.PLANS[plan]?.tier || 1,
+          amount: (SUBSCRIPTION_CONFIG.PLANS[plan]?.price || 0) * 100,
+          currency: SUBSCRIPTION_CONFIG.CURRENCY,
+          paymentId: `UPGRADE_${Date.now()}`,
+          orderId: `ORD_${Date.now()}`,
+          invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
+          startDate: sub.startDate,
+          expiryDate: sub.expiryDate,
+          features: SUBSCRIPTION_CONFIG.PLANS[plan]?.features || [],
+        }).catch((err) => console.warn("[Upgrade Confirm Email] Warning:", err.message));
+      }
+    }
+
     const planConfig = SUBSCRIPTION_CONFIG.PLANS[plan];
     return res.status(200).json({
-      message: `Successfully updated plan to ${plan}`,
+      message: `Successfully updated plan to ${plan}. A notification email has been sent to ${userDoc?.email || "your registered email"}.`,
       subscription: {
         id: sub._id,
         plan: sub.plan,

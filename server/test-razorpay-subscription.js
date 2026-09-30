@@ -18,6 +18,10 @@ import {
   verifyRazorpaySignature,
   getRazorpayKeySecret,
 } from "./services/razorpayService.js";
+import {
+  sendSubscriptionConfirmationEmail,
+  sendSubscriptionCancellationEmail,
+} from "./services/emailService.js";
 import { getOrCreateUserSubscription } from "./controllers/subscription.js";
 import {
   canWatchVideo,
@@ -262,6 +266,59 @@ async function runTests() {
     // Verify user data and invoice still intact
     const preservedInvoices = await Invoice.find({ userId: testUser._id });
     assert(preservedInvoices.length > 0, "User billing/invoice records preserved after downgrade");
+
+    // ----------------------------------------------------
+    // TEST 10: Email Notifications (Purchase & Cancellation)
+    // ----------------------------------------------------
+    console.log("\n--- TEST 10: Email Notifications (Purchase & Cancellation) ---");
+    const purchaseEmailResult = await sendSubscriptionConfirmationEmail({
+      toEmail: "subscriber_tester@example.com",
+      userName: "Subscriber Tester",
+      planName: "Silver",
+      planTier: 2,
+      amount: 134700,
+      currency: "INR",
+      paymentId: "pay_test_silver_123",
+      orderId: "order_test_silver_456",
+      invoiceNumber: "INV-2026-TEST-001",
+      startDate: new Date(),
+      expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      features: SUBSCRIPTION_CONFIG.PLANS.Silver.features,
+    });
+    assert(purchaseEmailResult.sent === true, "Purchase confirmation email generated successfully");
+    assert(
+      purchaseEmailResult.previewHtml && purchaseEmailResult.previewHtml.includes("INV-2026-TEST-001"),
+      "Purchase email contains valid invoice number"
+    );
+    assert(
+      purchaseEmailResult.previewHtml && purchaseEmailResult.previewHtml.includes("1,347.00"),
+      "Purchase email correctly displays currency formatted amount (₹1,347.00)"
+    );
+
+    const cancelEmailResult = await sendSubscriptionCancellationEmail({
+      toEmail: "subscriber_tester@example.com",
+      userName: "Subscriber Tester",
+      planName: "Silver",
+      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      immediate: false,
+    });
+    assert(cancelEmailResult.sent === true, "Auto-renew cancellation email generated successfully");
+    assert(
+      cancelEmailResult.previewHtml && cancelEmailResult.previewHtml.includes("No further recurring charges"),
+      "Cancellation email confirms stopping of recurring charges"
+    );
+
+    const immediateCancelResult = await sendSubscriptionCancellationEmail({
+      toEmail: "subscriber_tester@example.com",
+      userName: "Subscriber Tester",
+      planName: "Silver",
+      immediate: true,
+    });
+    assert(immediateCancelResult.sent === true, "Immediate cancellation email generated successfully");
+    assert(
+      immediateCancelResult.previewHtml && immediateCancelResult.previewHtml.includes("reverted to the Free plan"),
+      "Immediate cancellation email confirms reversion to Free plan"
+    );
 
     console.log("\n==================================================");
     console.log(`ALL TESTS PASSED! (${passed}/${total})`);

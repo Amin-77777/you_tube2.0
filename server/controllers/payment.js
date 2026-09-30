@@ -17,7 +17,10 @@ import {
   verifyRazorpaySignature,
   getRazorpayKeyId,
 } from "../services/razorpayService.js";
-import { sendSubscriptionConfirmationEmail } from "../services/emailService.js";
+import {
+  sendSubscriptionConfirmationEmail,
+  sendSubscriptionCancellationEmail,
+} from "../services/emailService.js";
 import { getOrCreateUserSubscription } from "./subscription.js";
 
 function generateInvoiceNumber() {
@@ -264,7 +267,7 @@ export const verifyPayment = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Congratulations! Your ${targetPlan} subscription is now active.`,
+      message: `Congratulations! Your ${targetPlan} subscription is now active. A confirmation email has been sent to ${userDoc?.email || "your email"}.`,
       subscription: {
         id: sub._id,
         plan: sub.plan,
@@ -303,21 +306,55 @@ export const cancelSubscription = async (req, res) => {
       return res.status(400).json({ message: "No active paid subscription to cancel" });
     }
 
-    sub.autoRenew = false;
-    sub.history.push({
-      plan: sub.plan,
-      action: "cancelled",
-      timestamp: new Date(),
-      details: `Auto-renewal cancelled by user. Access remains active until ${sub.expiryDate || sub.endDate}`,
-    });
+    const { immediate } = req.body || {};
+    const prevPlan = sub.plan;
+    const expiryDate = sub.expiryDate || sub.endDate;
+
+    if (immediate) {
+      sub.plan = "Free";
+      sub.status = "ACTIVE";
+      sub.expiryDate = null;
+      sub.endDate = null;
+      sub.autoRenew = false;
+      sub.history.push({
+        plan: prevPlan,
+        action: "cancelled",
+        timestamp: new Date(),
+        details: `Subscription cancelled immediately by user. Reverted to Free plan.`,
+      });
+    } else {
+      sub.autoRenew = false;
+      sub.history.push({
+        plan: sub.plan,
+        action: "cancelled",
+        timestamp: new Date(),
+        details: `Auto-renewal cancelled by user. Access remains active until ${expiryDate}`,
+      });
+    }
 
     await sub.save();
 
+    // Fetch user details for notification email
+    const userDoc = await User.findById(req.userId);
+    if (userDoc?.email) {
+      sendSubscriptionCancellationEmail({
+        toEmail: userDoc.email,
+        userName: userDoc.name,
+        planName: prevPlan,
+        expiryDate: immediate ? null : expiryDate,
+        immediate: Boolean(immediate),
+      }).catch((emailErr) => console.warn("[Cancel Email] Warning:", emailErr.message));
+    }
+
+    const message = immediate
+      ? `Your ${prevPlan} subscription has been cancelled immediately. A cancellation confirmation email has been sent to ${userDoc?.email || "your email"}.`
+      : `Your subscription will remain active until ${new Date(
+          expiryDate
+        ).toLocaleDateString()}, but it will not renew automatically. A confirmation email has been sent to ${userDoc?.email || "your email"}.`;
+
     return res.status(200).json({
       success: true,
-      message: `Your subscription will remain active until ${new Date(
-        sub.expiryDate || sub.endDate
-      ).toLocaleDateString()}, but it will not renew automatically.`,
+      message,
       subscription: {
         plan: sub.plan,
         status: sub.status,
