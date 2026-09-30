@@ -24,6 +24,10 @@ import {
   Sliders,
   FileText,
   BadgeAlert,
+  Mail,
+  Send,
+  Info,
+  ShieldCheck,
 } from "lucide-react";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
@@ -37,6 +41,9 @@ export default function SubscriptionDashboard() {
   const [sub, setSub] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [quota, setQuota] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+  const [testingEmail, setTestingEmail] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Modals & Action States
@@ -49,10 +56,11 @@ export default function SubscriptionDashboard() {
     if (!user) return;
     try {
       setLoading(true);
-      const [currentRes, billingRes, quotaRes] = await Promise.all([
+      const [currentRes, billingRes, quotaRes, notifRes] = await Promise.all([
         axiosInstance.get("/subscription/current"),
         axiosInstance.get("/subscription/billing-history"),
         axiosInstance.get("/download/quota"),
+        axiosInstance.get("/subscription/notifications"),
       ]);
 
       if (currentRes.data.subscription) {
@@ -64,10 +72,29 @@ export default function SubscriptionDashboard() {
       if (quotaRes.data) {
         setQuota(quotaRes.data);
       }
+      if (notifRes.data.notifications) {
+        setNotifications(notifRes.data.notifications);
+      }
     } catch (err: any) {
       console.warn("Error fetching dashboard data:", err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestEmailConfig = async () => {
+    try {
+      setTestingEmail(true);
+      const res = await axiosInstance.post("/subscription/verify-email-config");
+      if (res.data.configured) {
+        toast.success(res.data.message || "Email service is connected and ready!");
+      } else {
+        toast.info(res.data.message || "SMTP credentials not detected on server. In-app previews are active.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to check email service status.");
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -514,6 +541,109 @@ export default function SubscriptionDashboard() {
             </div>
           )}
         </div>
+
+        {/* 4. Plan Emails & Notifications Card */}
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-red-600" />
+                <h3 className="text-lg font-black text-gray-900">
+                  Plan Emails & Official Notices
+                </h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Purchase confirmation emails and cancellation notices dispatched for your account.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={testingEmail}
+              onClick={handleTestEmailConfig}
+              className="rounded-full text-xs font-semibold gap-1.5 border-gray-300"
+            >
+              <Send className="w-3.5 h-3.5 text-gray-500" />
+              {testingEmail ? "Checking..." : "Verify Email Setup"}
+            </Button>
+          </div>
+
+          {notifications.length === 0 ? (
+            <div className="text-center py-10 border border-dashed rounded-2xl p-6 space-y-2">
+              <Mail className="w-10 h-10 text-gray-300 mx-auto" />
+              <p className="text-sm font-semibold text-gray-700">No email records found yet</p>
+              <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                Whenever you purchase, renew, or cancel a subscription, official email notices will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-600 border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 text-gray-900 text-xs uppercase tracking-wider font-extrabold">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4">Subject</th>
+                    <th className="py-3 px-4">Delivery Status</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {notifications.map((notif) => (
+                    <tr key={notif._id} className="hover:bg-gray-50/80 transition-colors">
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {new Date(notif.createdAt).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            notif.type === "SUBSCRIPTION_PURCHASE"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {notif.type === "SUBSCRIPTION_PURCHASE" ? "Purchase" : "Cancellation"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-gray-900 max-w-xs truncate">
+                        {notif.subject}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                            notif.deliveryStatus === "DELIVERED_SMTP"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {notif.deliveryStatus === "DELIVERED_SMTP"
+                            ? "Delivered to Email"
+                            : "In-App Preview"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedEmail(notif)}
+                          className="h-7 text-xs font-semibold rounded-lg gap-1 border-gray-300"
+                        >
+                          <Eye className="w-3 h-3 text-red-600" />
+                          View Email
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 4. Printable Invoice Receipt Modal */}
@@ -630,7 +760,84 @@ export default function SubscriptionDashboard() {
         </div>
       )}
 
-      {/* 5. Cancel Subscription Confirmation Modal */}
+      {/* 5. Email Preview Modal */}
+      {selectedEmail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 border max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-red-600" />
+                  <h3 className="font-black text-gray-900 text-base">{selectedEmail.subject}</h3>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Recipient: <strong>{selectedEmail.userEmail}</strong> &bull; Generated on{" "}
+                  {new Date(selectedEmail.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedEmail(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {selectedEmail.deliveryStatus !== "DELIVERED_SMTP" && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-xs text-amber-900">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold">In-App Preview Active</p>
+                  <p className="text-[11px] text-amber-700">
+                    To deliver live emails straight to your personal Gmail/Outlook inbox, configure <code>EMAIL_USER</code> and <code>EMAIL_PASSWORD</code> in your Render environment variables.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto border border-gray-100 rounded-2xl bg-gray-50 p-2">
+              <iframe
+                title="Email Content"
+                srcDoc={selectedEmail.htmlContent}
+                className="w-full h-[450px] rounded-xl border-none bg-white"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t text-xs">
+              <span className="text-gray-400 font-mono text-[11px]">
+                Status: {selectedEmail.deliveryStatus}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedEmail(null)}
+                  className="rounded-full text-xs"
+                >
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const printWin = window.open("", "_blank");
+                    if (printWin) {
+                      printWin.document.write(selectedEmail.htmlContent);
+                      printWin.document.close();
+                      printWin.print();
+                    }
+                  }}
+                  className="rounded-full text-xs bg-red-600 hover:bg-red-700 text-white font-bold"
+                >
+                  Print Email
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Cancel Subscription Confirmation Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border">

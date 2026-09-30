@@ -14,6 +14,10 @@ import {
   getInvoiceDetails,
   recordWatchTime,
   checkVideoAccess,
+  getUserNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  verifyEmailConfiguration,
 } from "../controllers/payment.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 
@@ -38,5 +42,11 @@ routes.post("/schedule-downgrade", requireAuth, scheduleDowngrade);
 routes.get("/billing-history", requireAuth, getBillingHistory);
 routes.get("/invoice/:invoiceNumber", requireAuth, getInvoiceDetails);
 routes.post("/watch-time", requireAuth, recordWatchTime);
+
+// Email & In-App Notification Endpoints
+routes.get("/notifications", requireAuth, getUserNotifications);
+routes.post("/notifications/mark-all-read", requireAuth, markAllNotificationsRead);
+routes.post("/notifications/:id/read", requireAuth, markNotificationRead);
+routes.post("/verify-email-config", requireAuth, verifyEmailConfiguration);
 
 export default routes;

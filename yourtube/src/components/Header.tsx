@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Channeldialogue from "./channeldialogue";
 import UploadVideoModal from "./UploadVideoModal";
+import NotificationBell from "./NotificationBell";
 import { useRouter } from "next/router";
 import { useUser } from "@/lib/AuthContext";
 
@@ -101,9 +102,7 @@ const Header = () => {
                 <VideoIcon className="w-6 h-6" />
               </Button>
             </Link>
-            <Button variant="ghost" size="icon">
-              <Bell className="w-6 h-6" />
-            </Button>
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

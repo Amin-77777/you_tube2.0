@@ -17,9 +17,11 @@ import {
   verifyRazorpaySignature,
   getRazorpayKeyId,
 } from "../services/razorpayService.js";
+import Notification from "../Modals/Notification.js";
 import {
   sendSubscriptionConfirmationEmail,
   sendSubscriptionCancellationEmail,
+  verifyEmailSetup,
 } from "../services/emailService.js";
 import { getOrCreateUserSubscription } from "./subscription.js";
 
@@ -524,6 +526,113 @@ export const checkVideoAccess = async (req, res) => {
   } catch (error) {
     console.error("[Check Video Access] Error:", error.message);
     return res.status(500).json({ message: "Failed to check video access", error: error.message });
+  }
+};
+
+/**
+ * Controller: GET /subscription/notifications
+ * Retrieves user's email notifications and in-app alerts with retroactive backfill
+ */
+export const getUserNotifications = async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    let notifications = await Notification.find({ userId }).sort({ createdAt: -1 }).lean();
+
+    // Auto-backfill for existing subscribers who purchased before notification model was deployed
+    if (notifications.length === 0) {
+      const invoices = await Invoice.find({ userId }).sort({ createdAt: -1 }).lean();
+      for (const inv of invoices) {
+        await sendSubscriptionConfirmationEmail({
+          userId,
+          toEmail: inv.userEmail,
+          userName: inv.userName,
+          planName: inv.planName,
+          planTier: inv.planTier,
+          amount: inv.amount,
+          currency: inv.currency,
+          paymentId: inv.paymentId,
+          orderId: inv.orderId,
+          invoiceNumber: inv.invoiceNumber,
+          startDate: inv.startDate || inv.paymentDate,
+          expiryDate: inv.expiryDate,
+          features: SUBSCRIPTION_CONFIG.PLANS[inv.planName]?.features || [],
+        });
+      }
+      notifications = await Notification.find({ userId }).sort({ createdAt: -1 }).lean();
+    }
+
+    const unreadCount = notifications.filter((n) => !n.read).length;
+
+    return res.status(200).json({
+      success: true,
+      notifications,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error("[Notifications] Error:", error.message);
+    return res.status(500).json({ message: "Failed to load notifications", error: error.message });
+  }
+};
+
+/**
+ * Controller: POST /subscription/notifications/:id/read
+ * Mark notification as read
+ */
+export const markNotificationRead = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  try {
+    const notif = await Notification.findOneAndUpdate(
+      { _id: id, userId },
+      { $set: { read: true } },
+      { new: true }
+    );
+
+    if (!notif) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    return res.status(200).json({ success: true, notification: notif });
+  } catch (error) {
+    console.error("[Notification Read] Error:", error.message);
+    return res.status(500).json({ message: "Failed to mark notification read" });
+  }
+};
+
+/**
+ * Controller: POST /subscription/notifications/mark-all-read
+ * Mark all notifications as read
+ */
+export const markAllNotificationsRead = async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    await Notification.updateMany({ userId }, { $set: { read: true } });
+    return res.status(200).json({ success: true, message: "All notifications marked as read" });
+  } catch (error) {
+    console.error("[Mark All Read] Error:", error.message);
+    return res.status(500).json({ message: "Failed to mark notifications read" });
+  }
+};
+
+/**
+ * Controller: POST /subscription/verify-email-config
+ * Diagnostic endpoint to check SMTP / Resend readiness
+ */
+export const verifyEmailConfiguration = async (req, res) => {
+  try {
+    const userDoc = await User.findById(req.userId);
+    const targetEmail = userDoc?.email || "subscriber@example.com";
+    const status = await verifyEmailSetup(targetEmail);
+    return res.status(200).json({
+      success: true,
+      userEmail: targetEmail,
+      ...status,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
 

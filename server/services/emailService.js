@@ -1,31 +1,159 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import Notification from "../Modals/Notification.js";
+import User from "../Modals/Auth.js";
 
 dotenv.config();
 
-let transporter = null;
+let cachedTransporter = null;
 
-if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+/**
+ * Lazily configures and returns the SMTP transporter if environment variables are set.
+ */
+function getTransporter() {
+  const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
+  const emailPass =
+    process.env.EMAIL_PASSWORD ||
+    process.env.GMAIL_APP_PASSWORD ||
+    process.env.EMAIL_PASS;
+  const emailHost = process.env.EMAIL_HOST;
+
+  if (!emailUser || !emailPass) {
+    return null;
+  }
+
+  // If already instantiated, reuse it
+  if (cachedTransporter) {
+    return cachedTransporter;
+  }
+
   try {
-    transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-      secure: process.env.EMAIL_SECURE === "true",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
-    console.log("[Email Service] SMTP Transporter configured successfully.");
+    // 1. Gmail configuration (simplest and most reliable for Google App Passwords)
+    if (
+      process.env.EMAIL_SERVICE === "gmail" ||
+      emailHost === "smtp.gmail.com" ||
+      (!emailHost && emailUser.toLowerCase().includes("@gmail.com"))
+    ) {
+      cachedTransporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+      console.log(`[Email Service] Gmail SMTP configured for ${emailUser}`);
+      return cachedTransporter;
+    }
+
+    // 2. Custom SMTP Host configuration (Brevo, SendGrid, Amazon SES, Mailgun, etc.)
+    if (emailHost) {
+      cachedTransporter = nodemailer.createTransport({
+        host: emailHost,
+        port: parseInt(process.env.EMAIL_PORT, 10) || 587,
+        secure: process.env.EMAIL_SECURE === "true" || process.env.EMAIL_PORT === "465",
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+      console.log(`[Email Service] Custom SMTP configured for ${emailHost}:${process.env.EMAIL_PORT || 587}`);
+      return cachedTransporter;
+    }
   } catch (err) {
-    console.warn("[Email Service] Could not initialize SMTP transporter:", err.message);
+    console.warn("[Email Service] Failed to initialize SMTP transporter:", err.message);
+    cachedTransporter = null;
+  }
+
+  return null;
+}
+
+/**
+ * Dispatches an email via Resend API or SMTP Transporter, with graceful simulation fallback.
+ */
+async function dispatchEmail({ to, subject, html, from }) {
+  const sender = from || process.env.EMAIL_FROM || '"YourTube" <noreply@yourtube.app>';
+
+  // 1. Resend API support (if API key provided)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: sender.includes("<") ? sender : `YourTube <${sender}>`,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`[Email Service] Email dispatched via Resend API to ${to} (ID: ${data.id})`);
+        return { sent: true, mode: "resend", details: `Resend ID: ${data.id}` };
+      }
+      console.warn("[Email Service] Resend API error:", data);
+    } catch (apiErr) {
+      console.warn("[Email Service] Resend dispatch failed:", apiErr.message);
+    }
+  }
+
+  // 2. Nodemailer SMTP (Gmail or custom SMTP)
+  const transporter = getTransporter();
+  if (transporter && to) {
+    try {
+      const info = await transporter.sendMail({
+        from: sender,
+        to,
+        subject,
+        html,
+      });
+      console.log(`[Email Service] Live SMTP email delivered to ${to} (MessageId: ${info.messageId})`);
+      return { sent: true, mode: "smtp", details: `MessageId: ${info.messageId}` };
+    } catch (smtpErr) {
+      console.warn("[Email Service] Live SMTP delivery failed:", smtpErr.message);
+      return {
+        sent: false,
+        mode: "failed",
+        error: smtpErr.message,
+        details: `SMTP error: ${smtpErr.message}`,
+      };
+    }
+  }
+
+  // 3. Simulation mode (no credentials provided in environment)
+  console.log(
+    `[Email Service] Simulated email generated for ${to} — Subject: "${subject}". Note: To deliver live emails to inbox, configure EMAIL_USER and EMAIL_PASSWORD (or Gmail App Password) in server environment variables.`
+  );
+  return {
+    sent: false,
+    mode: "simulation",
+    details:
+      "Server SMTP credentials (EMAIL_USER / EMAIL_PASSWORD) not configured in environment variables. Email preview is stored in In-App Notification Center.",
+  };
+}
+
+/**
+ * Finds target userId for notifications
+ */
+async function resolveUserId(userId, toEmail) {
+  if (userId) return userId;
+  if (!toEmail) return null;
+  try {
+    const userDoc = await User.findOne({ email: toEmail }).select("_id");
+    return userDoc?._id || null;
+  } catch {
+    return null;
   }
 }
 
 /**
- * Generates and sends a branded subscription confirmation email
+ * Generates and sends a branded subscription confirmation email + stores in Notification Center
  */
 export async function sendSubscriptionConfirmationEmail({
+  userId,
   toEmail,
   userName,
   planName,
@@ -81,7 +209,7 @@ export async function sendSubscriptionConfirmationEmail({
         <div style="padding: 32px 24px;">
           <h2 style="font-size: 18px; color: #111827; margin-top: 0;">Hello ${userName || "Subscriber"},</h2>
           <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">
-            Thank you for subscribing! Your test payment for the <strong>${planName}</strong> plan has been successfully verified. Your premium benefits are active immediately.
+            Thank you for subscribing! Your payment for the <strong>${planName}</strong> plan has been successfully verified. Your premium benefits are active immediately.
           </p>
 
           <div style="background-color: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0;">
@@ -124,7 +252,7 @@ export async function sendSubscriptionConfirmationEmail({
 
           <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; font-size: 12px; color: #9ca3af; text-align: center;">
             <p style="margin: 0;">Need help with your subscription? Reach us at support@yourtube.app</p>
-            <p style="margin: 4px 0 0 0;">Razorpay Test Mode Payment Receipt</p>
+            <p style="margin: 4px 0 0 0;">YourTube Subscription Management System</p>
           </div>
         </div>
       </div>
@@ -132,30 +260,59 @@ export async function sendSubscriptionConfirmationEmail({
     </html>
   `;
 
-  if (transporter && toEmail) {
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || '"YourTube" <noreply@yourtube.app>',
-        to: toEmail,
-        subject: `Subscription Payment Successful — YourTube (${planName})`,
-        html: emailHtml,
+  const subject = `Subscription Payment Successful — YourTube (${planName})`;
+  const dispatchResult = await dispatchEmail({
+    to: toEmail,
+    subject,
+    html: emailHtml,
+  });
+
+  const deliveryStatus = dispatchResult.sent ? "DELIVERED_SMTP" : "SIMULATED";
+
+  // Record notification in database
+  try {
+    const targetUserId = await resolveUserId(userId, toEmail);
+    if (targetUserId) {
+      await Notification.create({
+        userId: targetUserId,
+        userEmail: toEmail,
+        type: "SUBSCRIPTION_PURCHASE",
+        title: `🎉 ${planName} Plan Activated`,
+        subject,
+        previewText: `Your payment of ${currencySymbol} ${displayAmount} for ${planName} was confirmed. Invoice #${invoiceNumber}`,
+        htmlContent: emailHtml,
+        deliveryStatus,
+        deliveryDetails: dispatchResult.details || "",
+        metadata: {
+          invoiceNumber,
+          planName,
+          amount: displayAmount,
+          currency,
+          paymentId,
+          orderId,
+          startDate: formattedStart,
+          expiryDate: formattedExpiry,
+        },
       });
-      console.log(`[Email Service] Confirmation email sent to ${toEmail}`);
-      return { sent: true, mode: "smtp" };
-    } catch (err) {
-      console.warn("[Email Service] Failed to send SMTP email:", err.message);
     }
+  } catch (notifErr) {
+    console.warn("[Email Service] Could not store in-app notification:", notifErr.message);
   }
 
-  // Simulation mode: logged and saved
-  console.log(`[Email Service] Simulated purchase confirmation email generated for ${toEmail} (${invoiceNumber})`);
-  return { sent: true, mode: "simulation", previewHtml: emailHtml };
+  return {
+    sent: true,
+    mode: dispatchResult.mode,
+    deliveryStatus,
+    previewHtml: emailHtml,
+    details: dispatchResult.details,
+  };
 }
 
 /**
- * Generates and sends a branded subscription cancellation notification email
+ * Generates and sends a branded subscription cancellation notification email + stores in Notification Center
  */
 export async function sendSubscriptionCancellationEmail({
+  userId,
   toEmail,
   userName,
   planName,
@@ -234,21 +391,90 @@ export async function sendSubscriptionCancellationEmail({
     </html>
   `;
 
-  if (transporter && toEmail) {
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || '"YourTube" <noreply@yourtube.app>',
-        to: toEmail,
-        subject: `Subscription Cancelled — YourTube (${planName})`,
-        html: emailHtml,
+  const subject = `Subscription Cancelled — YourTube (${planName})`;
+  const dispatchResult = await dispatchEmail({
+    to: toEmail,
+    subject,
+    html: emailHtml,
+  });
+
+  const deliveryStatus = dispatchResult.sent ? "DELIVERED_SMTP" : "SIMULATED";
+
+  try {
+    const targetUserId = await resolveUserId(userId, toEmail);
+    if (targetUserId) {
+      await Notification.create({
+        userId: targetUserId,
+        userEmail: toEmail,
+        type: "SUBSCRIPTION_CANCEL",
+        title: `⚠️ ${planName} Subscription Cancelled`,
+        subject,
+        previewText: immediate
+          ? `Your ${planName} subscription was cancelled immediately and reverted to Free.`
+          : `Auto-renewal disabled. Your ${planName} benefits remain active until ${formattedExpiry}.`,
+        htmlContent: emailHtml,
+        deliveryStatus,
+        deliveryDetails: dispatchResult.details || "",
+        metadata: {
+          planName,
+          expiryDate: formattedExpiry,
+          immediate,
+        },
       });
-      console.log(`[Email Service] Cancellation email sent to ${toEmail}`);
-      return { sent: true, mode: "smtp" };
-    } catch (err) {
-      console.warn("[Email Service] Failed to send SMTP cancellation email:", err.message);
     }
+  } catch (notifErr) {
+    console.warn("[Email Service] Could not store in-app cancellation notification:", notifErr.message);
   }
 
-  console.log(`[Email Service] Simulated cancellation email generated for ${toEmail} (${planName})`);
-  return { sent: true, mode: "simulation", previewHtml: emailHtml };
+  return {
+    sent: true,
+    mode: dispatchResult.mode,
+    deliveryStatus,
+    previewHtml: emailHtml,
+    details: dispatchResult.details,
+  };
+}
+
+/**
+ * Diagnostic test tool to verify SMTP connection or environment setup
+ */
+export async function verifyEmailSetup(targetEmail) {
+  const transporter = getTransporter();
+  const resendKey = Boolean(process.env.RESEND_API_KEY);
+
+  if (!transporter && !resendKey) {
+    return {
+      configured: false,
+      message:
+        "No SMTP credentials found in server environment variables. To receive real emails in your inbox, set EMAIL_USER and EMAIL_PASSWORD (or Gmail App Password) in your Render environment variables.",
+      variablesFound: {
+        EMAIL_USER: Boolean(process.env.EMAIL_USER || process.env.GMAIL_USER),
+        EMAIL_PASSWORD: Boolean(process.env.EMAIL_PASSWORD || process.env.GMAIL_APP_PASSWORD),
+        EMAIL_HOST: Boolean(process.env.EMAIL_HOST),
+        RESEND_API_KEY: resendKey,
+      },
+    };
+  }
+
+  try {
+    if (transporter) {
+      await transporter.verify();
+      return {
+        configured: true,
+        provider: "smtp",
+        message: "SMTP transporter connected and verified successfully!",
+      };
+    }
+    return {
+      configured: true,
+      provider: "resend",
+      message: "Resend API key configured.",
+    };
+  } catch (err) {
+    return {
+      configured: false,
+      error: err.message,
+      message: `SMTP verification failed: ${err.message}`,
+    };
+  }
 }
