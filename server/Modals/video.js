@@ -12,6 +12,12 @@ const videochema = mongoose.Schema(
     uploader: { type: String },
     thumbnail: { type: String },
     duration: { type: String, default: "0:30" },
+    accessLevel: {
+      type: String,
+      enum: ["free", "bronze", "silver", "gold"],
+      default: "free",
+      index: true,
+    },
   },
   {
     timestamps: true,

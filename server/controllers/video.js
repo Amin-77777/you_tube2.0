@@ -35,7 +35,7 @@ export function getProceduralThumbnail(seedStr = "") {
   return CURATED_FALLBACK_THUMBNAILS[idx];
 }
 
-// 11 distinct, verified, playable videos with 100% unique thumbnails and durable CDN streaming
+// 11 distinct, verified, playable videos with 100% unique thumbnails, durable CDN streaming, and tier access levels
 export const SAMPLE_VIDEOS = [
   {
     videotitle: "Big Buck Bunny - Animated 3D Short Film",
@@ -49,6 +49,7 @@ export const SAMPLE_VIDEOS = [
     Like: 14200,
     views: 385000,
     uploader: "admin",
+    accessLevel: "free",
   },
   {
     videotitle: "Deep Ocean Bioluminescent Jellyfish 4K",
@@ -62,6 +63,7 @@ export const SAMPLE_VIDEOS = [
     Like: 8900,
     views: 215000,
     uploader: "admin",
+    accessLevel: "gold",
   },
   {
     videotitle: "Sintel - Fantasy Dragon Story Short Film",
@@ -75,6 +77,7 @@ export const SAMPLE_VIDEOS = [
     Like: 18200,
     views: 450000,
     uploader: "admin",
+    accessLevel: "silver",
   },
   {
     videotitle: "Timelapse: Blooming Spring Garden & Flowers",
@@ -88,6 +91,7 @@ export const SAMPLE_VIDEOS = [
     Like: 12500,
     views: 290000,
     uploader: "admin",
+    accessLevel: "free",
   },
   {
     videotitle: "Retro Groove: 80s Synthwave Visuals & Audio",
@@ -101,6 +105,7 @@ export const SAMPLE_VIDEOS = [
     Like: 9500,
     views: 180000,
     uploader: "admin",
+    accessLevel: "bronze",
   },
   {
     videotitle: "Modern City Night Drive & Lights in 4K",
@@ -114,6 +119,7 @@ export const SAMPLE_VIDEOS = [
     Like: 7400,
     views: 154000,
     uploader: "admin",
+    accessLevel: "gold",
   },
   {
     videotitle: "Weekend Chill: Peaceful Mountain Sunset",
@@ -127,6 +133,7 @@ export const SAMPLE_VIDEOS = [
     Like: 11200,
     views: 245000,
     uploader: "admin",
+    accessLevel: "bronze",
   },
   {
     videotitle: "Introduction to YourTube",
@@ -140,6 +147,7 @@ export const SAMPLE_VIDEOS = [
     Like: 24,
     views: 226,
     uploader: "admin",
+    accessLevel: "free",
   },
   {
     videotitle: "Mobile Cinematic Video & Highlights",
@@ -153,6 +161,7 @@ export const SAMPLE_VIDEOS = [
     Like: 45,
     views: 310,
     uploader: "admin",
+    accessLevel: "silver",
   },
   {
     videotitle: "Urban Street Style & Everyday Bag Tour",
@@ -166,6 +175,7 @@ export const SAMPLE_VIDEOS = [
     Like: 78,
     views: 520,
     uploader: "user",
+    accessLevel: "free",
   },
   {
     videotitle: "Action Camera Adventure & Vlog",
@@ -179,6 +189,7 @@ export const SAMPLE_VIDEOS = [
     Like: 92,
     views: 640,
     uploader: "user",
+    accessLevel: "bronze",
   },
 ];
 
@@ -286,6 +297,7 @@ export const uploadvideo = async (req, res) => {
       uploader: req.body.uploader || "user",
       thumbnail: thumbnailSrc,
       duration: req.body.duration || "0:30",
+      accessLevel: req.body.accessLevel || "free",
     });
 
     await file.save();
@@ -304,11 +316,12 @@ export const updateVideo = async (req, res) => {
       return res.status(404).json({ message: "Video not found" });
     }
 
-    const { videotitle, thumbnail, videochanel, duration } = req.body;
+    const { videotitle, thumbnail, videochanel, duration, accessLevel } = req.body;
 
     if (videotitle) videoDoc.videotitle = videotitle;
     if (videochanel) videoDoc.videochanel = videochanel;
     if (duration) videoDoc.duration = duration;
+    if (accessLevel) videoDoc.accessLevel = accessLevel;
 
     // Handle thumbnail uploaded as a file
     if (req.file) {
@@ -377,6 +390,7 @@ export const seedvideo = async (req, res) => {
               duration: sample.duration,
               videochanel: sample.videochanel,
               filesize: sample.filesize,
+              accessLevel: sample.accessLevel || "free",
             },
           }
         );

@@ -173,6 +173,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:33",
     views: 385000,
     Like: 14200,
+    accessLevel: "free",
   },
   {
     _id: "default-2",
@@ -183,6 +184,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:10",
     views: 215000,
     Like: 8900,
+    accessLevel: "gold",
   },
   {
     _id: "default-3",
@@ -193,6 +195,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:10",
     views: 450000,
     Like: 18200,
+    accessLevel: "silver",
   },
   {
     _id: "default-4",
@@ -203,6 +206,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:05",
     views: 290000,
     Like: 12500,
+    accessLevel: "free",
   },
   {
     _id: "default-5",
@@ -213,6 +217,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:45",
     views: 180000,
     Like: 9500,
+    accessLevel: "bronze",
   },
   {
     _id: "default-6",
@@ -223,6 +228,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:15",
     views: 154000,
     Like: 7400,
+    accessLevel: "gold",
   },
   {
     _id: "default-7",
@@ -233,6 +239,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:08",
     views: 245000,
     Like: 11200,
+    accessLevel: "bronze",
   },
   {
     _id: "default-8",
@@ -243,6 +250,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:30",
     views: 226,
     Like: 24,
+    accessLevel: "free",
   },
   {
     _id: "default-9",
@@ -253,6 +261,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:31",
     views: 310,
     Like: 45,
+    accessLevel: "silver",
   },
   {
     _id: "default-10",
@@ -263,6 +272,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:31",
     views: 520,
     Like: 78,
+    accessLevel: "free",
   },
   {
     _id: "default-11",
@@ -273,5 +283,6 @@ export const DEFAULT_FALLBACK_VIDEOS = [
     duration: "0:31",
     views: 640,
     Like: 92,
+    accessLevel: "bronze",
   },
 ];

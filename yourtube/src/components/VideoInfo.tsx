@@ -182,7 +182,28 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{video.videotitle}</h1>
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <h1 className="text-xl font-bold text-gray-900">{video.videotitle}</h1>
+        {video.accessLevel && video.accessLevel !== "free" && (
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1 shadow-sm ${
+              video.accessLevel === "gold"
+                ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black border border-yellow-300"
+                : video.accessLevel === "silver"
+                ? "bg-gradient-to-r from-slate-200 to-slate-400 text-slate-900 border border-slate-300"
+                : "bg-gradient-to-r from-amber-700 to-amber-600 text-white border border-amber-600"
+            }`}
+          >
+            <span>
+              {video.accessLevel === "gold"
+                ? "👑 Gold VIP"
+                : video.accessLevel === "silver"
+                ? "⚡ Silver"
+                : "🥉 Bronze"}
+            </span>
+          </span>
+        )}
+      </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-gray-100">
         <div className="flex items-center gap-4">

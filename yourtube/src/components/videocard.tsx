@@ -120,6 +120,27 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
                 {currentVideo?.duration || "0:30"}
               </div>
 
+              {/* Premium Tier Badge */}
+              {currentVideo?.accessLevel && currentVideo.accessLevel !== "free" && (
+                <div
+                  className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md backdrop-blur-md transition-opacity group-hover:opacity-0 ${
+                    currentVideo.accessLevel === "gold"
+                      ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black border border-yellow-200"
+                      : currentVideo.accessLevel === "silver"
+                      ? "bg-gradient-to-r from-slate-200 to-slate-400 text-slate-900 border border-slate-100"
+                      : "bg-gradient-to-r from-amber-700 to-amber-600 text-white border border-amber-500"
+                  }`}
+                >
+                  <span>
+                    {currentVideo.accessLevel === "gold"
+                      ? "👑 GOLD VIP"
+                      : currentVideo.accessLevel === "silver"
+                      ? "⚡ SILVER"
+                      : "🥉 BRONZE"}
+                  </span>
+                </div>
+              )}
+
               {/* Quick Download Button on Hover */}
               <button
                 type="button"

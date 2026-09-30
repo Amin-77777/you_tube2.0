@@ -1,39 +1,55 @@
 import Subscription from "../Modals/Subscription.js";
 import { DOWNLOAD_CONFIG, getPlanDailyLimit } from "../config/downloadConfig.js";
+import { SUBSCRIPTION_CONFIG } from "../config/subscriptionPlans.js";
 
 /**
  * Get or initialize user's current subscription.
  */
 export async function getOrCreateUserSubscription(userId) {
   let sub = await Subscription.findOne({ userId });
+  const now = new Date();
+
   if (!sub) {
     sub = await Subscription.create({
       userId,
       plan: "Free",
-      status: "active",
-      startDate: new Date(),
+      duration: "monthly",
+      status: "ACTIVE",
+      startDate: now,
       endDate: null,
+      expiryDate: null,
+      renewalDate: null,
+      autoRenew: true,
       history: [
         {
           plan: "Free",
           action: "created",
-          timestamp: new Date(),
+          timestamp: now,
           details: "Default Free tier assigned",
         },
       ],
     });
-  } else if (sub.endDate && new Date(sub.endDate) < new Date() && sub.plan !== "Free") {
-    // If paid plan expired, downgrade to Free automatically
-    sub.plan = "Free";
-    sub.status = "active";
-    sub.endDate = null;
-    sub.history.push({
-      plan: "Free",
-      action: "expired",
-      timestamp: new Date(),
-      details: "Previous subscription expired, reverted to Free plan",
-    });
-    await sub.save();
+  } else {
+    const expiry = sub.expiryDate || sub.endDate;
+    if (expiry && new Date(expiry) < now && sub.plan !== "Free") {
+      // Check if a downgrade was scheduled
+      const targetPlan = sub.scheduledDowngrade?.targetPlan || "Free";
+      const prevPlan = sub.plan;
+
+      sub.plan = targetPlan;
+      sub.status = targetPlan === "Free" ? "ACTIVE" : "ACTIVE";
+      sub.endDate = null;
+      sub.expiryDate = null;
+      sub.scheduledDowngrade = null;
+
+      sub.history.push({
+        plan: targetPlan,
+        action: "expired",
+        timestamp: now,
+        details: `Subscription for ${prevPlan} expired; transitioned to ${targetPlan}`,
+      });
+      await sub.save();
+    }
   }
   return sub;
 }
@@ -44,19 +60,30 @@ export async function getOrCreateUserSubscription(userId) {
 export const getCurrentSubscription = async (req, res) => {
   try {
     const sub = await getOrCreateUserSubscription(req.userId);
-    const planConfig = DOWNLOAD_CONFIG.PLANS[sub.plan] || DOWNLOAD_CONFIG.PLANS.Free;
+    const planConfig = SUBSCRIPTION_CONFIG.PLANS[sub.plan] || SUBSCRIPTION_CONFIG.PLANS.Free;
+    const downloadLimit = getPlanDailyLimit(sub.plan);
 
     return res.status(200).json({
       subscription: {
         id: sub._id,
         plan: sub.plan,
+        duration: sub.duration || "monthly",
         status: sub.status,
         startDate: sub.startDate,
-        endDate: sub.endDate,
-        dailyDownloadLimit: planConfig.dailyLimit,
+        endDate: sub.endDate || sub.expiryDate,
+        expiryDate: sub.expiryDate || sub.endDate,
+        renewalDate: sub.renewalDate,
+        autoRenew: sub.autoRenew ?? true,
+        dailyDownloadLimit: downloadLimit,
+        dailyWatchLimitMinutes: planConfig.dailyWatchLimitMinutes,
+        dailyWatchTimeUsed: sub.dailyWatchTimeMinutesUsed || 0,
+        maxStreamingQuality: planConfig.maxStreamingQuality,
         features: planConfig.features,
         description: planConfig.description,
         isActive: sub.isActive(),
+        scheduledDowngrade: sub.scheduledDowngrade,
+        lastPaymentId: sub.lastPaymentId,
+        invoiceNumber: sub.invoiceNumber,
       },
     });
   } catch (error) {
@@ -70,17 +97,21 @@ export const getCurrentSubscription = async (req, res) => {
  */
 export const getSubscriptionPlans = (req, res) => {
   return res.status(200).json({
-    plans: DOWNLOAD_CONFIG.PLANS,
+    plans: SUBSCRIPTION_CONFIG.PLANS,
+    durations: SUBSCRIPTION_CONFIG.DURATIONS,
+    currency: SUBSCRIPTION_CONFIG.CURRENCY,
+    currencySymbol: SUBSCRIPTION_CONFIG.CURRENCY_SYMBOL,
     duplicateWindowMinutes: DOWNLOAD_CONFIG.DUPLICATE_WINDOW_MINUTES,
   });
 };
 
 /**
  * Controller: POST /subscription/upgrade
+ * Supports instant test tier switching or legacy upgrade
  */
 export const upgradeSubscription = async (req, res) => {
-  const { plan } = req.body;
-  const validPlans = Object.keys(DOWNLOAD_CONFIG.PLANS);
+  const { plan, duration = "monthly" } = req.body;
+  const validPlans = Object.keys(SUBSCRIPTION_CONFIG.PLANS);
 
   if (!plan || !validPlans.includes(plan)) {
     return res.status(400).json({
@@ -91,33 +122,41 @@ export const upgradeSubscription = async (req, res) => {
   try {
     const sub = await getOrCreateUserSubscription(req.userId);
     const previousPlan = sub.plan;
+    const durationConfig = SUBSCRIPTION_CONFIG.DURATIONS[duration] || SUBSCRIPTION_CONFIG.DURATIONS.monthly;
+    const durationDays = durationConfig.days || 30;
 
     sub.plan = plan;
-    sub.status = "active";
+    sub.duration = duration;
+    sub.status = "ACTIVE";
     sub.startDate = new Date();
-    // 30 days validity for paid tiers, null for perpetual Free
-    sub.endDate = plan === "Free" ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    sub.endDate = plan === "Free" ? null : new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+    sub.expiryDate = sub.endDate;
+    sub.renewalDate = sub.endDate;
+    sub.autoRenew = true;
+    sub.scheduledDowngrade = null;
 
     const action = previousPlan === plan ? "renewed" : "upgraded";
     sub.history.push({
       plan,
-      action: action === "renewed" ? "created" : "upgraded",
+      action: action === "renewed" ? "renewed" : "upgraded",
       timestamp: new Date(),
-      details: `Plan changed from ${previousPlan} to ${plan}`,
+      details: `Plan switched from ${previousPlan} to ${plan} (${duration})`,
     });
 
     await sub.save();
 
-    const planConfig = DOWNLOAD_CONFIG.PLANS[plan];
+    const planConfig = SUBSCRIPTION_CONFIG.PLANS[plan];
     return res.status(200).json({
-      message: `Successfully changed plan to ${plan}`,
+      message: `Successfully updated plan to ${plan}`,
       subscription: {
         id: sub._id,
         plan: sub.plan,
+        duration: sub.duration,
         status: sub.status,
         startDate: sub.startDate,
         endDate: sub.endDate,
-        dailyDownloadLimit: planConfig.dailyLimit,
+        expiryDate: sub.expiryDate,
+        dailyDownloadLimit: planConfig.downloadLimit,
         features: planConfig.features,
       },
     });
@@ -129,7 +168,6 @@ export const upgradeSubscription = async (req, res) => {
 
 /**
  * Controller: POST /subscription/device
- * Support for device registration restriction (Section 16)
  */
 export const registerDevice = async (req, res) => {
   const { deviceId, deviceName } = req.body;

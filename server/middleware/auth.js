@@ -56,6 +56,42 @@ export const requireAuth = async (req, res, next) => {
 };
 
 /**
+ * Optional authentication: attaches user if valid token/ID provided, otherwise continues as guest
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let userId = null;
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const decoded = jwt.verify(authHeader.split(" ")[1], JWT_SECRET);
+        userId = decoded.id || decoded.userId || decoded._id;
+      } catch (jwtErr) {
+        // Ignored for optional auth
+      }
+    } else if (req.headers["x-user-id"]) {
+      userId = req.headers["x-user-id"];
+    } else if (req.body?.userId) {
+      userId = req.body.userId;
+    } else if (req.query?.userId) {
+      userId = req.query.userId;
+    }
+
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      const userDoc = await User.findById(userId);
+      if (userDoc) {
+        req.user = userDoc;
+        req.userId = userDoc._id;
+      }
+    }
+  } catch (error) {
+    // Continue anonymously
+  }
+  next();
+};
+
+/**
  * Generates a signed JWT token for a user.
  */
 export function generateToken(userDoc) {

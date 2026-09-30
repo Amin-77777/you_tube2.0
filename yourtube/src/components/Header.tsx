@@ -1,4 +1,4 @@
-import { Bell, Menu, Mic, Search, Upload, User, VideoIcon, Download, Zap } from "lucide-react";
+import { Bell, Menu, Mic, Search, Upload, User, VideoIcon, Download, Zap, CreditCard } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -152,7 +152,13 @@ const Header = () => {
                 <DropdownMenuItem asChild>
                   <Link href="/subscriptions" className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500" />
-                    Subscriptions
+                    Subscription Plans
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/subscription/dashboard" className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-emerald-600" />
+                    Subscription & Invoices
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
