@@ -184,7 +184,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{video.videotitle}</h1>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-gray-100">
         <div className="flex items-center gap-4">
           <Avatar className="w-10 h-10">
             <AvatarFallback>{video.videochanel[0]}</AvatarFallback>
@@ -193,9 +193,23 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             <h3 className="font-medium">{video.videochanel}</h3>
             <p className="text-sm text-gray-600">1.2M subscribers</p>
           </div>
-          <Button className="ml-4">Subscribe</Button>
+          <Button className="ml-4 rounded-full bg-black text-white hover:bg-gray-800">Subscribe</Button>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Prominent High-Visibility Download Button */}
+          <Button
+            variant="default"
+            size="sm"
+            disabled={downloading}
+            onClick={handleDownload}
+            className="bg-red-600 hover:bg-red-700 text-white rounded-full font-bold px-4 shadow-sm flex items-center gap-1.5 transition-all"
+            title="Download Video for Offline Viewing"
+          >
+            <Download className={`w-4 h-4 text-white ${downloading ? "animate-bounce" : ""}`} />
+            <span>{downloading ? "Preparing..." : "Download"}</span>
+          </Button>
+
           <div className="flex items-center bg-gray-100 rounded-full">
             <Button
               variant="ghost"
@@ -225,6 +239,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
               {dislikes.toLocaleString()}
             </Button>
           </div>
+
           <Button
             variant="ghost"
             size="sm"
@@ -236,15 +251,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             <Clock className="w-5 h-5 mr-2" />
             {isWatchLater ? "Saved" : "Watch Later"}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="bg-gray-100 hover:bg-gray-200 rounded-full text-blue-600 font-medium"
-            onClick={() => setIsEditModalOpen(true)}
-          >
-            <ImageIcon className="w-5 h-5 mr-1.5 text-blue-600" />
-            Change Thumbnail
-          </Button>
+
           <Button
             variant="ghost"
             size="sm"
@@ -253,16 +260,17 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             <Share className="w-5 h-5 mr-2" />
             Share
           </Button>
+
           <Button
             variant="ghost"
             size="sm"
-            disabled={downloading}
-            onClick={handleDownload}
-            className="bg-gray-100 hover:bg-gray-200 rounded-full font-medium transition-colors"
+            className="bg-gray-100 hover:bg-gray-200 rounded-full text-blue-600 font-medium"
+            onClick={() => setIsEditModalOpen(true)}
           >
-            <Download className={`w-5 h-5 mr-2 ${downloading ? "animate-bounce text-red-600" : ""}`} />
-            {downloading ? "Preparing..." : "Download"}
+            <ImageIcon className="w-5 h-5 mr-1.5 text-blue-600" />
+            Thumbnail
           </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -305,6 +313,44 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
         >
           {showFullDescription ? "Show less" : "Show more"}
         </Button>
+      </div>
+
+      {/* Prominent Offline Download Action Banner */}
+      <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Download className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-sm text-gray-900">
+              Download video for offline playback
+            </h4>
+            <p className="text-xs text-gray-600">
+              {currentVideo?.filesize ? `Size: ${currentVideo.filesize} • ` : ""}
+              Controlled daily quota • Secure download stream
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            onClick={handleDownload}
+            disabled={downloading}
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-5 shadow-xs"
+          >
+            <Download className={`w-4 h-4 mr-1.5 ${downloading ? "animate-bounce" : ""}`} />
+            {downloading ? "Preparing..." : "Download Now"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/subscriptions")}
+            className="rounded-full text-xs font-semibold border-red-200 text-red-700 hover:bg-red-100/50"
+          >
+            View Quota Plans
+          </Button>
+        </div>
       </div>
     </div>
   );

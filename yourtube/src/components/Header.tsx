@@ -74,6 +74,16 @@ const Header = () => {
         </Button>
       </form>
       <div className="flex items-center gap-2">
+        <Link href="/downloads" title="View Downloads & Quota">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1.5 font-semibold rounded-full border-red-200 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 text-xs shadow-xs"
+          >
+            <Download className="w-3.5 h-3.5 text-red-600" />
+            <span className="hidden sm:inline">Downloads</span>
+          </Button>
+        </Link>
         <Button
           variant="outline"
           size="sm"

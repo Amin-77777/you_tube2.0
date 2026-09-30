@@ -1,17 +1,25 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { getThumbnailSrc, getUniqueFallbackThumbnail, formatViews } from "@/lib/videoUtils";
-import { Play, Image as ImageIcon } from "lucide-react";
+import { Play, Image as ImageIcon, Download } from "lucide-react";
 import EditThumbnailModal from "./EditThumbnailModal";
+import { useUser } from "@/lib/AuthContext";
+import axiosInstance from "@/lib/axiosinstance";
+import { getBackendUrl } from "@/lib/backendUrl";
+import { toast } from "sonner";
 
 export default function VideoCard({ video, onVideoUpdate }: { video: any; onVideoUpdate?: (v: any) => void }) {
+  const router = useRouter();
+  const { user } = useUser();
   const [currentVideo, setCurrentVideo] = useState(video);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Sync if prop changes
   React.useEffect(() => {
@@ -25,6 +33,54 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
     e.preventDefault();
     e.stopPropagation();
     setIsEditModalOpen(true);
+  };
+
+  const handleQuickDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please sign in to download videos.", {
+        action: {
+          label: "Sign In",
+          onClick: () => router.push(`/signin?redirect=/watch/${currentVideo?._id}`),
+        },
+      });
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      const res = await axiosInstance.post(`/download/authorize/${currentVideo?._id}`);
+      if (res.data.authorized && res.data.downloadUrl) {
+        if (res.data.isDuplicate) {
+          toast.info("Duplicate download: Saved again without using daily quota.");
+        } else {
+          toast.success(`Download started! Remaining today: ${res.data.quota?.remaining}`);
+        }
+        const fullUrl = `${getBackendUrl()}${res.data.downloadUrl}`;
+        const link = document.createElement("a");
+        link.href = fullUrl;
+        link.setAttribute("download", "");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err: any) {
+      const errData = err.response?.data;
+      if (errData?.error === "QuotaExceeded") {
+        toast.error(errData.message || "Daily download limit reached.", {
+          action: {
+            label: "Upgrade Plan",
+            onClick: () => router.push("/subscriptions"),
+          },
+        });
+      } else {
+        toast.error(errData?.message || "Failed to start download.");
+      }
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleUpdateSuccess = (updated: any) => {
@@ -63,6 +119,18 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
               <div className="absolute bottom-2 right-2 bg-black/85 text-white text-xs font-semibold px-2 py-0.5 rounded shadow">
                 {currentVideo?.duration || "0:30"}
               </div>
+
+              {/* Quick Download Button on Hover */}
+              <button
+                type="button"
+                onClick={handleQuickDownload}
+                title="Download Video"
+                disabled={isDownloading}
+                className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white text-xs px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shadow-md z-10 font-semibold"
+              >
+                <Download className={`w-3.5 h-3.5 ${isDownloading ? "animate-bounce" : ""}`} />
+                <span>{isDownloading ? "..." : "Download"}</span>
+              </button>
 
               {/* Quick Change Thumbnail Button on Hover */}
               <button
@@ -114,4 +182,3 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
     </>
   );
 }
-
