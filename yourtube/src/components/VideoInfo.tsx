@@ -11,8 +11,11 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/router";
+import { toast } from "sonner";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
+import { getBackendUrl } from "@/lib/backendUrl";
 import EditThumbnailModal from "./EditThumbnailModal";
 
 const VideoInfo = ({ video, onVideoUpdate }: any) => {
@@ -23,6 +26,8 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
   const [isDisliked, setIsDisliked] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const { user } = useUser();
+  const router = useRouter();
+  const [downloading, setDownloading] = useState(false);
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -119,6 +124,62 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
       console.log(error);
     }
   };
+
+  const handleDownload = async () => {
+    if (!user) {
+      const targetId = currentVideo?._id || video?._id;
+      toast.error("Please sign in to download videos for offline viewing.", {
+        action: {
+          label: "Sign In",
+          onClick: () => router.push(targetId ? `/signin?redirect=/watch/${targetId}` : "/signin"),
+        },
+      });
+      return;
+    }
+
+    const targetId = currentVideo?._id || video?._id;
+    if (!targetId) {
+      toast.error("Video ID is missing.");
+      return;
+    }
+
+    try {
+      setDownloading(true);
+      const res = await axiosInstance.post(`/download/authorize/${targetId}`);
+      if (res.data.authorized && res.data.downloadUrl) {
+        if (res.data.isDuplicate) {
+          toast.info("Duplicate download: Downloaded again without using daily quota.");
+        } else {
+          toast.success(
+            `Download started! ${res.data.quota?.remaining} download(s) remaining today.`
+          );
+        }
+
+        const fullUrl = `${getBackendUrl()}${res.data.downloadUrl}`;
+        const link = document.createElement("a");
+        link.href = fullUrl;
+        link.setAttribute("download", "");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err: any) {
+      const errData = err.response?.data;
+      if (errData?.error === "QuotaExceeded") {
+        toast.error(errData.message || "Daily download quota exceeded.", {
+          action: {
+            label: "Upgrade Plan",
+            onClick: () => router.push("/subscriptions"),
+          },
+        });
+      } else {
+        toast.error(errData?.message || "Failed to authorize download.");
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{video.videotitle}</h1>
@@ -195,10 +256,12 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 rounded-full"
+            disabled={downloading}
+            onClick={handleDownload}
+            className="bg-gray-100 hover:bg-gray-200 rounded-full font-medium transition-colors"
           >
-            <Download className="w-5 h-5 mr-2" />
-            Download
+            <Download className={`w-5 h-5 mr-2 ${downloading ? "animate-bounce text-red-600" : ""}`} />
+            {downloading ? "Preparing..." : "Download"}
           </Button>
           <Button
             variant="ghost"

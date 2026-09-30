@@ -1,4 +1,4 @@
-import { Bell, Menu, Mic, Search, Upload, User, VideoIcon } from "lucide-react";
+import { Bell, Menu, Mic, Search, Upload, User, VideoIcon, Download, Zap } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -133,20 +133,35 @@ const Header = () => {
                   <Link href="/watch-later">Watch later</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/downloads" className="flex items-center gap-2 font-medium text-red-600">
+                    <Download className="w-4 h-4 text-red-600" />
+                    Downloads
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/subscriptions" className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    Subscriptions
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>Sign out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </>
         ) : (
-          <>
-            <Button
-              className="flex items-center gap-2"
-              onClick={handlegooglesignin}
-            >
-              <User className="w-4 h-4" />
-              Sign in
-            </Button>
-          </>
+          <div className="flex items-center gap-2">
+            <Link href="/signin">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-medium px-4 text-xs"
+              >
+                <User className="w-4 h-4 text-blue-600" />
+                Sign in
+              </Button>
+            </Link>
+          </div>
         )}{" "}
       </div>
       <UploadVideoModal

@@ -9,6 +9,8 @@ import likeroutes from "./routes/like.js";
 import watchlaterroutes from "./routes/watchlater.js";
 import historyrroutes from "./routes/history.js";
 import commentroutes from "./routes/comment.js";
+import downloadroutes from "./routes/download.js";
+import subscriptionroutes from "./routes/subscription.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { setupSocketIO } from "./socketHandler.js";
@@ -271,6 +273,8 @@ app.use("/like", likeroutes);
 app.use("/watch", watchlaterroutes);
 app.use("/history", historyrroutes);
 app.use("/comment", commentroutes);
+app.use("/download", downloadroutes);
+app.use("/subscription", subscriptionroutes);
 const PORT = process.env.PORT || 5000;
 
 

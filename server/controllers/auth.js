@@ -1,18 +1,18 @@
 import mongoose from "mongoose";
 import users from "../Modals/Auth.js";
+import { generateToken } from "../middleware/auth.js";
 
 export const login = async (req, res) => {
   const { email, name, image } = req.body;
 
   try {
-    const existingUser = await users.findOne({ email });
+    let existingUser = await users.findOne({ email });
 
     if (!existingUser) {
-      const newUser = await users.create({ email, name, image });
-      return res.status(201).json({ result: newUser });
-    } else {
-      return res.status(200).json({ result: existingUser });
+      existingUser = await users.create({ email, name, image });
     }
+    const token = generateToken(existingUser);
+    return res.status(200).json({ result: existingUser, token });
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ message: "Something went wrong" });
