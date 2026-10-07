@@ -4,7 +4,7 @@ import VideoInfo from "@/components/VideoInfo";
 import Videopplayer from "@/components/Videopplayer";
 import axiosInstance from "@/lib/axiosinstance";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Film } from "lucide-react";
 import { DEFAULT_FALLBACK_VIDEOS } from "@/lib/videoUtils";
@@ -15,6 +15,7 @@ const WatchPage = () => {
   const [currentVideo, setCurrentVideo] = useState<any>(null);
   const [allVideos, setAllVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -59,6 +60,37 @@ const WatchPage = () => {
     fetchVideoData();
   }, [router.isReady, id]);
 
+  // Compute Next and Previous videos
+  const { nextVideo, prevVideo } = useMemo(() => {
+    if (!allVideos.length || !currentVideo) {
+      return { nextVideo: undefined, prevVideo: undefined };
+    }
+    const currentIndex = allVideos.findIndex(
+      (v) => v._id === currentVideo._id || v.id === currentVideo._id
+    );
+    const next =
+      currentIndex >= 0 && currentIndex < allVideos.length - 1
+        ? allVideos[currentIndex + 1]
+        : allVideos.length > 1
+        ? allVideos[0]
+        : undefined;
+    const prev = currentIndex > 0 ? allVideos[currentIndex - 1] : undefined;
+
+    return { nextVideo: next, prevVideo: prev };
+  }, [allVideos, currentVideo]);
+
+  const handleNextVideo = () => {
+    if (nextVideo?._id) {
+      router.push(`/watch/${nextVideo._id}`);
+    }
+  };
+
+  const handlePreviousVideo = () => {
+    if (prevVideo?._id) {
+      router.push(`/watch/${prevVideo._id}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
@@ -91,23 +123,66 @@ const WatchPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <Videopplayer video={currentVideo} />
-            <VideoInfo
-              video={currentVideo}
-              onVideoUpdate={(updated: any) => setCurrentVideo(updated)}
-            />
-            <Comments videoId={currentVideo._id || id} />
+      {/* THEATER MODE: Full-width banner at top */}
+      {isTheaterMode ? (
+        <div>
+          <div className="w-full bg-black py-0 sm:py-2">
+            <div className="max-w-[1700px] mx-auto px-0 sm:px-4">
+              <Videopplayer
+                video={currentVideo}
+                nextVideo={nextVideo}
+                prevVideo={prevVideo}
+                onNextVideo={handleNextVideo}
+                onPreviousVideo={handlePreviousVideo}
+                onTheaterModeChange={(theater) => setIsTheaterMode(theater)}
+              />
+            </div>
           </div>
-          <div className="space-y-4">
-            <RelatedVideos
-              videos={allVideos.filter((v: any) => v._id !== currentVideo._id)}
-            />
+
+          <div className="max-w-7xl mx-auto p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <VideoInfo
+                  video={currentVideo}
+                  onVideoUpdate={(updated: any) => setCurrentVideo(updated)}
+                />
+                <Comments videoId={currentVideo._id || id} />
+              </div>
+              <div className="space-y-4">
+                <RelatedVideos
+                  videos={allVideos.filter((v: any) => v._id !== currentVideo._id)}
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* STANDARD MODE: 2-column layout */
+        <div className="max-w-7xl mx-auto p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <Videopplayer
+                video={currentVideo}
+                nextVideo={nextVideo}
+                prevVideo={prevVideo}
+                onNextVideo={handleNextVideo}
+                onPreviousVideo={handlePreviousVideo}
+                onTheaterModeChange={(theater) => setIsTheaterMode(theater)}
+              />
+              <VideoInfo
+                video={currentVideo}
+                onVideoUpdate={(updated: any) => setCurrentVideo(updated)}
+              />
+              <Comments videoId={currentVideo._id || id} />
+            </div>
+            <div className="space-y-4">
+              <RelatedVideos
+                videos={allVideos.filter((v: any) => v._id !== currentVideo._id)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

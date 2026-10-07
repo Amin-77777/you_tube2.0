@@ -18,6 +18,15 @@ const videochema = mongoose.Schema(
       default: "free",
       index: true,
     },
+    subtitles: [
+      {
+        label: { type: String, default: "English" },
+        srclang: { type: String, default: "en" },
+        src: { type: String },
+        kind: { type: String, default: "subtitles" },
+        default: { type: Boolean, default: false },
+      },
+    ],
   },
   {
     timestamps: true,

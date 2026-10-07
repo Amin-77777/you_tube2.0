@@ -32,6 +32,7 @@ interface NotificationItem {
   read: boolean;
   deliveryStatus: string;
   deliveryDetails: string;
+  userEmail?: string;
   createdAt: string;
   metadata?: any;
 }

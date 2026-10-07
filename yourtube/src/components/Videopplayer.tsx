@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { getVideoSources, getThumbnailSrc } from "@/lib/videoUtils";
 import {
@@ -19,15 +19,23 @@ import {
 import { Button } from "./ui/button";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
+import { videoPlaybackManager } from "@/lib/videoPlaybackManager";
+import { PLAYER_CONFIG } from "./video-player/playerConfig";
+import CustomControls from "./video-player/CustomControls";
+import LoadingSpinner from "./video-player/LoadingSpinner";
+import ActionFeedback, { FeedbackType } from "./video-player/ActionFeedback";
+import AutoplayCountdownOverlay from "./video-player/AutoplayCountdownOverlay";
+import KeyboardShortcutsModal from "./video-player/KeyboardShortcutsModal";
+import { SubtitleTrack, VideoItem } from "./video-player/types";
 
 interface VideoPlayerProps {
-  video: {
-    _id: string;
-    videotitle: string;
-    filepath: string;
-    thumbnail?: string;
-    accessLevel?: string;
-  };
+  video: VideoItem;
+  nextVideo?: VideoItem;
+  prevVideo?: VideoItem;
+  onNextVideo?: () => void;
+  onPreviousVideo?: () => void;
+  onTheaterModeChange?: (isTheater: boolean) => void;
+  autoPlay?: boolean;
 }
 
 const TIER_ORDER: Record<string, number> = {
@@ -37,9 +45,19 @@ const TIER_ORDER: Record<string, number> = {
   gold: 4,
 };
 
-export default function VideoPlayer({ video }: VideoPlayerProps) {
+export default function VideoPlayer({
+  video,
+  nextVideo,
+  prevVideo,
+  onNextVideo,
+  onPreviousVideo,
+  onTheaterModeChange,
+  autoPlay = false,
+}: VideoPlayerProps) {
   const router = useRouter();
   const { user } = useUser();
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const sources = getVideoSources(video?.filepath);
@@ -54,16 +72,55 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
   const [watchLimitReached, setWatchLimitReached] = useState(false);
   const [watchLimitInfo, setWatchLimitInfo] = useState<any>(null);
 
+  // Core Player States
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [bufferedTime, setBufferedTime] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
+  const [isPiP, setIsPiP] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [captionsEnabled, setCaptionsEnabled] = useState(false);
+  const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState<string | null>(null);
+  const [selectedQuality, setSelectedQuality] = useState<string>("Auto");
+  const [feedbackType, setFeedbackType] = useState<FeedbackType>(null);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+
+  // Autoplay countdown state
+  const [showAutoplayOverlay, setShowAutoplayOverlay] = useState(false);
+
+  // Watch position & progress flags
+  const hasResumedPositionRef = useRef(false);
+  const hasReportedCompletionRef = useRef(false);
+  const lastProgressSaveTimeRef = useRef(0);
+  const inactivityTimerRef = useRef<any>(null);
+  const clickTimeoutRef = useRef<any>(null);
+
   const activeSrc = sources[currentSourceIndex] || "";
   const posterSrc = getThumbnailSrc(video);
   const videoAccess = (video?.accessLevel || "free").toLowerCase();
+
+  const subtitles: SubtitleTrack[] = video?.subtitles || [
+    // Provide sample captions if video matches sample videos for demonstration
+    {
+      label: "English",
+      srclang: "en",
+      src: "/captions/sample-en.vtt",
+      default: false,
+    },
+  ];
 
   // 1. Check access permissions
   useEffect(() => {
     let isMounted = true;
 
     const checkAccess = async () => {
-      // Determine required plan
       const reqName =
         videoAccess === "gold"
           ? "Gold"
@@ -82,7 +139,6 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
         return;
       }
 
-      // If user is not logged in and video is not free, lock immediately
       if (!user) {
         if (isMounted) {
           setIsAllowed(false);
@@ -92,7 +148,6 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
       }
 
       try {
-        // Query backend for accurate verification
         const res = await axiosInstance.get(`/subscription/check-access/${video?._id}`);
         if (isMounted) {
           setIsAllowed(Boolean(res.data.allowed));
@@ -102,7 +157,6 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
           setAccessChecked(true);
         }
       } catch (err: any) {
-        // Fallback to local tier rank calculation
         if (isMounted) {
           const userRank = TIER_ORDER[userPlan.toLowerCase()] || 1;
           const reqRank = TIER_ORDER[videoAccess] || 1;
@@ -136,23 +190,42 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
       .catch(() => {});
   }, [user]);
 
-  // 2. Reset playback on source or video change
+  // 2. Prevent Multiple Videos From Playing (register with videoPlaybackManager)
+  useEffect(() => {
+    const playerId = `player_${video?._id || "default"}_${Date.now()}`;
+    const unregister = videoPlaybackManager.register(playerId, () => {
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    });
+
+    return () => {
+      unregister();
+    };
+  }, [video?._id]);
+
+  // 3. Reset playback state on source or video change
   useEffect(() => {
     setCurrentSourceIndex(0);
     setPlaybackError(null);
     setWatchLimitReached(false);
+    setShowAutoplayOverlay(false);
+    hasResumedPositionRef.current = false;
+    hasReportedCompletionRef.current = false;
+    setCurrentTime(0);
+    setDuration(0);
 
     if (videoRef.current && isAllowed) {
       videoRef.current.load();
     }
   }, [video?.filepath, video?._id, isAllowed]);
 
-  // 3. Periodic Watch-Time Tracking (Enforces daily watch time limit)
+  // 4. Periodic Watch-Time Tracking (Subscription daily limit)
   useEffect(() => {
     if (!user || !isAllowed || watchLimitReached) return;
 
     const interval = setInterval(async () => {
-      // Only track if video is actually actively playing
       if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
         try {
           const res = await axiosInstance.post("/subscription/watch-time", { minutes: 1 });
@@ -161,18 +234,493 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
             setWatchLimitInfo(res.data);
             if (videoRef.current) {
               videoRef.current.pause();
+              setIsPlaying(false);
             }
           }
         } catch (_) {}
       }
-    }, 60000); // Check every 60 seconds
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [user, isAllowed, watchLimitReached]);
 
+  // 5. Save Watch Progress function (Backend + LocalStorage)
+  const saveProgress = useCallback(
+    async (timeToSave?: number, forceCompleted?: boolean) => {
+      if (!video?._id) return;
+      const current = timeToSave !== undefined ? timeToSave : videoRef.current?.currentTime || 0;
+      const total = duration || videoRef.current?.duration || 0;
+      if (total <= 0) return;
+
+      const percentage = Math.min(100, Math.max(0, (current / total) * 100));
+      const completed =
+        forceCompleted !== undefined
+          ? forceCompleted
+          : percentage >= PLAYER_CONFIG.completionThreshold;
+
+      // 1) Save to localStorage for instant client persistence
+      try {
+        localStorage.setItem(
+          `yt_watch_progress_${video._id}`,
+          JSON.stringify({
+            playbackPosition: current,
+            duration: total,
+            percentageWatched: percentage,
+            isCompleted: completed,
+            lastWatched: Date.now(),
+          })
+        );
+      } catch (_) {}
+
+      // 2) If logged in, save to backend history
+      if (user?._id) {
+        try {
+          await axiosInstance.post(`/history/progress/${video._id}`, {
+            userId: user._id,
+            playbackPosition: current,
+            duration: total,
+            percentageWatched: percentage,
+            isCompleted: completed,
+          });
+        } catch (_) {}
+      }
+    },
+    [video?._id, duration, user?._id]
+  );
+
+  // 6. Resume Last Saved Watch Position
+  const resumeWatchPosition = useCallback(async () => {
+    if (hasResumedPositionRef.current || !video?._id || !videoRef.current) return;
+    hasResumedPositionRef.current = true;
+
+    let savedPos = 0;
+    let savedCompleted = false;
+
+    // Check backend first if user logged in
+    if (user?._id) {
+      try {
+        const res = await axiosInstance.get(`/history/progress/${video._id}`);
+        if (res.data?.progress) {
+          savedPos = Number(res.data.progress.playbackPosition) || 0;
+          savedCompleted = Boolean(res.data.progress.isCompleted);
+        }
+      } catch (_) {}
+    }
+
+    // Fallback to localStorage if backend had no position
+    if (savedPos <= 0) {
+      try {
+        const stored = localStorage.getItem(`yt_watch_progress_${video._id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          savedPos = Number(parsed.playbackPosition) || 0;
+          savedCompleted = Boolean(parsed.isCompleted);
+        }
+      } catch (_) {}
+    }
+
+    const totalDur = videoRef.current.duration || duration;
+    // Sensible handling for nearly completed videos:
+    // If user already completed or was within the last 5 seconds / 90% threshold, restart at 0s
+    if (savedCompleted || (totalDur > 0 && (savedPos / totalDur) * 100 >= PLAYER_CONFIG.completionThreshold) || (totalDur > 0 && totalDur - savedPos < 5)) {
+      videoRef.current.currentTime = 0;
+      setCurrentTime(0);
+    } else if (savedPos > 0 && savedPos < totalDur) {
+      videoRef.current.currentTime = savedPos;
+      setCurrentTime(savedPos);
+    }
+
+    if (autoPlay) {
+      videoRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
+    }
+  }, [video?._id, user?._id, duration, autoPlay]);
+
+  // Save progress on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (videoRef.current) {
+        saveProgress(videoRef.current.currentTime);
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (videoRef.current) {
+        saveProgress(videoRef.current.currentTime);
+      }
+    };
+  }, [saveProgress]);
+
+  // Fullscreen change detection (handles Escape key)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const active = Boolean(
+        document.fullscreenElement ||
+          (document as any).webkitFullscreenElement ||
+          (document as any).mozFullScreenElement
+      );
+      setIsFullscreen(active);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  // PiP change detection
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    const handleEnterPiP = () => setIsPiP(true);
+    const handleLeavePiP = () => setIsPiP(false);
+
+    vid.addEventListener("enterpictureinpicture", handleEnterPiP);
+    vid.addEventListener("leavepictureinpicture", handleLeavePiP);
+
+    return () => {
+      vid.removeEventListener("enterpictureinpicture", handleEnterPiP);
+      vid.removeEventListener("leavepictureinpicture", handleLeavePiP);
+    };
+  }, []);
+
+  // Controls auto-hide timer on mouse inactivity
+  const resetInactivityTimer = useCallback(() => {
+    setShowControls(true);
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (isPlaying) {
+      inactivityTimerRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, PLAYER_CONFIG.inactivityTimeout);
+    }
+  }, [isPlaying]);
+
+  const handleMouseMove = () => {
+    resetInactivityTimer();
+  };
+
+  const handleMouseLeave = () => {
+    if (isPlaying) {
+      setShowControls(false);
+    }
+  };
+
+  // Keyboard controls listener (Section 9)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Do not trigger shortcuts when user is focused inside input, textarea, select, or contenteditable
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (!videoRef.current || !isAllowed) return;
+
+      const vid = videoRef.current;
+
+      switch (e.key) {
+        case " ":
+        case "k":
+        case "K":
+          e.preventDefault();
+          handleTogglePlay();
+          break;
+
+        case "ArrowLeft":
+          e.preventDefault();
+          const seekBackInterval = e.shiftKey
+            ? PLAYER_CONFIG.largeSeekInterval
+            : PLAYER_CONFIG.normalSeekInterval;
+          handleSeekRelative(-seekBackInterval);
+          break;
+
+        case "ArrowRight":
+          e.preventDefault();
+          const seekFwdInterval = e.shiftKey
+            ? PLAYER_CONFIG.largeSeekInterval
+            : PLAYER_CONFIG.normalSeekInterval;
+          handleSeekRelative(seekFwdInterval);
+          break;
+
+        case "ArrowUp":
+          e.preventDefault();
+          handleVolumeChange(Math.min(1, volume + PLAYER_CONFIG.volumeStep));
+          break;
+
+        case "ArrowDown":
+          e.preventDefault();
+          handleVolumeChange(Math.max(0, volume - PLAYER_CONFIG.volumeStep));
+          break;
+
+        case "m":
+        case "M":
+          e.preventDefault();
+          handleToggleMute();
+          break;
+
+        case "f":
+        case "F":
+          e.preventDefault();
+          handleToggleFullscreen();
+          break;
+
+        case "t":
+        case "T":
+          e.preventDefault();
+          handleToggleTheaterMode();
+          break;
+
+        case "p":
+        case "P":
+          e.preventDefault();
+          handleTogglePiP();
+          break;
+
+        case "c":
+        case "C":
+          e.preventDefault();
+          handleToggleCaptions();
+          break;
+
+        case "n":
+        case "N":
+          e.preventDefault();
+          if (onNextVideo) {
+            onNextVideo();
+          }
+          break;
+
+        case "?":
+          e.preventDefault();
+          setShowShortcutsModal((prev) => !prev);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    isAllowed,
+    volume,
+    isMuted,
+    isPlaying,
+    isFullscreen,
+    isTheaterMode,
+    isPiP,
+    captionsEnabled,
+    onNextVideo,
+  ]);
+
+  // Playback Control Actions
+  const handleTogglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused || videoRef.current.ended) {
+      videoRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setFeedbackType("play");
+          videoPlaybackManager.notifyPlay(
+            `player_${video?._id}`,
+            videoRef.current
+          );
+        })
+        .catch(console.warn);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setFeedbackType("pause");
+      saveProgress(videoRef.current.currentTime);
+    }
+    resetInactivityTimer();
+  };
+
+  const handleSeek = (newTime: number) => {
+    if (!videoRef.current) return;
+    const clamped = Math.max(0, Math.min(duration, newTime));
+    videoRef.current.currentTime = clamped;
+    setCurrentTime(clamped);
+    resetInactivityTimer();
+  };
+
+  const handleSeekRelative = (offsetSeconds: number) => {
+    if (!videoRef.current) return;
+    const newTime = Math.max(0, Math.min(duration, currentTime + offsetSeconds));
+    videoRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+    setFeedbackType(offsetSeconds > 0 ? "seek-forward" : "seek-back");
+    resetInactivityTimer();
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    if (!videoRef.current) return;
+    const clamped = Math.max(0, Math.min(1, newVolume));
+    setVolume(clamped);
+    videoRef.current.volume = clamped;
+    if (clamped > 0 && isMuted) {
+      setIsMuted(false);
+      videoRef.current.muted = false;
+    }
+  };
+
+  const handleToggleMute = () => {
+    if (!videoRef.current) return;
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    videoRef.current.muted = nextMuted;
+    if (!nextMuted && volume === 0) {
+      setVolume(0.5);
+      videoRef.current.volume = 0.5;
+    }
+  };
+
+  const handlePlaybackRateChange = (rate: number) => {
+    if (!videoRef.current) return;
+    setPlaybackRate(rate);
+    videoRef.current.playbackRate = rate;
+  };
+
+  const handleQualityChange = (quality: string) => {
+    setSelectedQuality(quality);
+    // If multi-quality sources exist in video, switch source while preserving currentTime
+    if (Array.isArray(video?.sources) && video.sources.length > 0) {
+      const match = video.sources.find((s) => s.quality === quality);
+      if (match && match.src) {
+        const curTime = videoRef.current?.currentTime || 0;
+        const wasPlay = !videoRef.current?.paused;
+        if (videoRef.current) {
+          videoRef.current.src = match.src;
+          videoRef.current.currentTime = curTime;
+          if (wasPlay) {
+            videoRef.current.play().catch(console.warn);
+          }
+        }
+      }
+    }
+  };
+
+  const handleToggleFullscreen = async () => {
+    if (!containerRef.current) return;
+
+    try {
+      if (!isFullscreen) {
+        if (containerRef.current.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any).webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn("Fullscreen toggle failed:", err);
+    }
+  };
+
+  const handleToggleTheaterMode = () => {
+    const nextMode = !isTheaterMode;
+    setIsTheaterMode(nextMode);
+    onTheaterModeChange?.(nextMode);
+  };
+
+  const handleTogglePiP = async () => {
+    if (!videoRef.current) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setIsPiP(false);
+      } else if (document.pictureInPictureEnabled && videoRef.current.requestPictureInPicture) {
+        await videoRef.current.requestPictureInPicture();
+        setIsPiP(true);
+      }
+    } catch (err) {
+      console.warn("Picture-in-picture failed:", err);
+    }
+  };
+
+  const handleToggleCaptions = () => {
+    if (!videoRef.current) return;
+    const tracks = videoRef.current.textTracks;
+    if (!tracks || tracks.length === 0) return;
+
+    const nextState = !captionsEnabled;
+    setCaptionsEnabled(nextState);
+
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].mode = nextState ? "showing" : "hidden";
+    }
+  };
+
+  const handleSelectSubtitleTrack = (srclang: string | null) => {
+    if (!videoRef.current) return;
+    const tracks = videoRef.current.textTracks;
+    setCurrentSubtitleTrack(srclang);
+
+    if (!srclang) {
+      setCaptionsEnabled(false);
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].mode = "hidden";
+      }
+      return;
+    }
+
+    setCaptionsEnabled(true);
+    for (let i = 0; i < tracks.length; i++) {
+      if (tracks[i].language === srclang) {
+        tracks[i].mode = "showing";
+      } else {
+        tracks[i].mode = "hidden";
+      }
+    }
+  };
+
+  // Video Container Single / Double click handling
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Prevent click on controls bar from triggering video play/pause
+    if ((e.target as HTMLElement).closest(".pointer-events-auto")) {
+      return;
+    }
+
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      // Double click => Toggle fullscreen
+      handleToggleFullscreen();
+    } else {
+      clickTimeoutRef.current = setTimeout(() => {
+        clickTimeoutRef.current = null;
+        // Single click => Toggle play/pause
+        handleTogglePlay();
+      }, 250);
+    }
+  };
+
+  // Video Error and Retry handling
   const handleVideoError = () => {
     if (currentSourceIndex + 1 < sources.length) {
-      console.warn(`Source ${activeSrc} failed. Switching to alternate: ${sources[currentSourceIndex + 1]}`);
+      console.warn(
+        `Source ${activeSrc} failed. Switching to alternate: ${sources[currentSourceIndex + 1]}`
+      );
       setCurrentSourceIndex((prev) => prev + 1);
       return;
     }
@@ -208,10 +756,68 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     }
   };
 
-  // Plan styling details for the locked screen
+  // HTML5 Media Event Handlers
+  const handleLoadedMetadata = () => {
+    if (!videoRef.current) return;
+    const dur = videoRef.current.duration;
+    if (!isNaN(dur) && dur > 0) {
+      setDuration(dur);
+    }
+    resumeWatchPosition();
+  };
+
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const cur = videoRef.current.currentTime;
+    const dur = videoRef.current.duration || duration;
+    setCurrentTime(cur);
+
+    // Continuous watch progress check:
+    // 1) Video completion logic (Section 7)
+    if (dur > 0 && !hasReportedCompletionRef.current) {
+      const percentage = (cur / dur) * 100;
+      if (percentage >= PLAYER_CONFIG.completionThreshold) {
+        hasReportedCompletionRef.current = true;
+        saveProgress(cur, true);
+      }
+    }
+
+    // 2) Periodic Progress update (Section 6: Configurable interval, avoids excessive API calls)
+    const now = Date.now();
+    if (now - lastProgressSaveTimeRef.current >= PLAYER_CONFIG.progressSaveInterval) {
+      lastProgressSaveTimeRef.current = now;
+      saveProgress(cur);
+    }
+  };
+
+  const handleProgress = () => {
+    if (!videoRef.current) return;
+    const buffered = videoRef.current.buffered;
+    if (buffered.length > 0) {
+      const cur = videoRef.current.currentTime;
+      for (let i = 0; i < buffered.length; i++) {
+        if (buffered.start(i) <= cur && cur <= buffered.end(i)) {
+          setBufferedTime(buffered.end(i));
+          return;
+        }
+      }
+      setBufferedTime(buffered.end(buffered.length - 1));
+    }
+  };
+
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+    saveProgress(duration, true);
+
+    // Autoplay Next Video (Section 15)
+    if (nextVideo && onNextVideo) {
+      setShowAutoplayOverlay(true);
+    }
+  };
+
+  // LOCKED SCREEN OVERLAY (Subscription tier required)
   const isGold = requiredTier === "Gold";
   const isSilver = requiredTier === "Silver";
-
   const TierIcon = isGold ? Crown : isSilver ? Shield : Zap;
   const themeGlow = isGold
     ? "from-amber-500/30 via-yellow-500/10 to-transparent border-yellow-500/40 text-yellow-400"
@@ -225,20 +831,16 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     ? "bg-gradient-to-r from-slate-200 to-slate-400 hover:from-slate-300 hover:to-slate-500 text-slate-900 font-extrabold shadow-lg shadow-slate-400/20"
     : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold shadow-lg shadow-amber-600/20";
 
-  // LOCKED SCREEN OVERLAY
   if (!isAllowed && accessChecked) {
     return (
       <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center border border-white/10 group">
-        {/* Blurred video thumbnail backdrop */}
         <div
           className="absolute inset-0 bg-cover bg-center filter blur-md scale-105 opacity-25"
           style={{ backgroundImage: `url(${posterSrc})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60" />
 
-        {/* Center Card Content */}
         <div className="relative z-10 max-w-lg mx-4 p-6 sm:p-8 text-center flex flex-col items-center space-y-4">
-          {/* Glowing Tier Badge */}
           <div
             className={`w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-b border shadow-xl ${themeGlow}`}
           >
@@ -263,7 +865,6 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
             </p>
           </div>
 
-          {/* Tier Feature Highlights */}
           <div className="grid grid-cols-2 gap-2 text-left w-full max-w-sm bg-white/5 border border-white/10 rounded-xl p-3 text-[11px] text-gray-300 backdrop-blur-sm">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -285,7 +886,6 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
             </div>
           </div>
 
-          {/* Action CTAs */}
           <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-sm pt-1">
             {!user ? (
               <Button
@@ -297,7 +897,9 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
               </Button>
             ) : (
               <Button
-                onClick={() => router.push(`/subscriptions?plan=${requiredTier}&required=${requiredTier}`)}
+                onClick={() =>
+                  router.push(`/subscriptions?plan=${requiredTier}&required=${requiredTier}`)
+                }
                 className={`w-full py-5 rounded-xl text-xs ${buttonGradient} flex items-center justify-center gap-2`}
               >
                 <Sparkles className="w-4 h-4" />
@@ -336,13 +938,14 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-white">Daily Watch Limit Reached</h2>
             <p className="text-xs text-gray-300">
-              You have used your daily watch allowance ({watchLimitInfo?.limitMinutes || 30} mins) for the{" "}
-              <strong>{userPlan}</strong> plan today.
+              You have used your daily watch allowance ({watchLimitInfo?.limitMinutes || 30} mins)
+              for the <strong>{userPlan}</strong> plan today.
             </p>
           </div>
 
           <p className="text-[11px] text-gray-400 bg-white/5 border border-white/10 rounded-xl p-3">
-            Watch time limits automatically reset at midnight UTC every day. To continue watching now with unlimited watch time, upgrade to Gold VIP.
+            Watch time limits automatically reset at midnight UTC every day. To continue watching now
+            with unlimited watch time, upgrade to Gold VIP.
           </p>
 
           <div className="flex items-center justify-center gap-3 pt-2">
@@ -366,7 +969,7 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     );
   }
 
-  // STANDARD ACTIVE PLAYER
+  // NO SOURCE AVAILABLE
   if (!activeSrc) {
     return (
       <div className="aspect-video bg-gray-900 rounded-2xl flex flex-col items-center justify-center text-white p-6 shadow-inner">
@@ -376,30 +979,133 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     );
   }
 
+  // FULLY CUSTOMIZED MODERN HTML5 VIDEO PLAYER
   return (
-    <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-lg group">
+    <div
+      ref={containerRef}
+      onClick={handleContainerClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl select-none group focus:outline-none ${
+        isFullscreen ? "rounded-none w-screen h-screen aspect-auto" : ""
+      } ${!showControls && isPlaying ? "cursor-none" : ""}`}
+    >
+      {/* HTML5 Native Video Element (controls disabled!) */}
       <video
         key={activeSrc}
         ref={videoRef}
         src={activeSrc}
         poster={posterSrc}
-        controls
         playsInline
         preload="metadata"
         crossOrigin="anonymous"
         className="w-full h-full object-contain bg-black"
-        onPlaying={() => setPlaybackError(null)}
+        onLoadStart={() => setIsBuffering(true)}
+        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedData={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => {
+          setIsBuffering(false);
+          setIsPlaying(true);
+          setPlaybackError(null);
+        }}
+        onPause={() => setIsPlaying(false)}
+        onTimeUpdate={handleTimeUpdate}
+        onProgress={handleProgress}
+        onSeeking={() => setIsBuffering(true)}
+        onSeeked={() => setIsBuffering(false)}
+        onEnded={handleVideoEnded}
         onError={handleVideoError}
       >
         {sources.map((s, idx) => (
           <source key={idx} src={s} type="video/mp4" />
         ))}
+
+        {/* Captions Tracks (HTML5 <track>) */}
+        {subtitles.map((track, idx) => (
+          <track
+            key={idx}
+            kind={track.kind || "subtitles"}
+            label={track.label}
+            src={track.src}
+            srcLang={track.srclang}
+            default={track.default || false}
+          />
+        ))}
+
         Your browser does not support the video tag.
       </video>
 
+      {/* Buffering Spinner */}
+      <LoadingSpinner isBuffering={isBuffering} />
+
+      {/* Center Action Feedback Ripple */}
+      <ActionFeedback type={feedbackType} onClear={() => setFeedbackType(null)} />
+
+      {/* Autoplay Next Video Countdown Overlay */}
+      {showAutoplayOverlay && nextVideo && onNextVideo && (
+        <AutoplayCountdownOverlay
+          nextVideo={nextVideo}
+          countdownSeconds={PLAYER_CONFIG.autoplayCountdownSeconds}
+          onPlayNext={() => {
+            setShowAutoplayOverlay(false);
+            onNextVideo();
+          }}
+          onCancel={() => setShowAutoplayOverlay(false)}
+        />
+      )}
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
+
+      {/* Custom Control Bar & Overlays */}
+      <CustomControls
+        isPlaying={isPlaying}
+        isMuted={isMuted}
+        volume={volume}
+        currentTime={currentTime}
+        duration={duration}
+        bufferedTime={bufferedTime}
+        playbackRate={playbackRate}
+        isFullscreen={isFullscreen}
+        isTheaterMode={isTheaterMode}
+        isPiP={isPiP}
+        showControls={showControls}
+        isBuffering={isBuffering}
+        isSeeking={isSeeking}
+        captionsEnabled={captionsEnabled}
+        selectedQuality={selectedQuality}
+        availableQualities={[...PLAYER_CONFIG.videoQualities]}
+        subtitles={subtitles}
+        currentSubtitleTrack={currentSubtitleTrack}
+        videoTitle={video.videotitle}
+        onPlayPause={handleTogglePlay}
+        onSeek={handleSeek}
+        onSeekRelative={handleSeekRelative}
+        onVolumeChange={handleVolumeChange}
+        onToggleMute={handleToggleMute}
+        onPlaybackRateChange={handlePlaybackRateChange}
+        onQualityChange={handleQualityChange}
+        onToggleFullscreen={handleToggleFullscreen}
+        onToggleTheaterMode={handleToggleTheaterMode}
+        onTogglePiP={handleTogglePiP}
+        onToggleCaptions={handleToggleCaptions}
+        onSelectSubtitleTrack={handleSelectSubtitleTrack}
+        onPreviousVideo={onPreviousVideo}
+        onNextVideo={onNextVideo}
+        hasPreviousVideo={Boolean(prevVideo && onPreviousVideo)}
+        hasNextVideo={Boolean(nextVideo && onNextVideo)}
+        posterSrc={posterSrc}
+        videoSrc={activeSrc}
+      />
+
       {/* Non-blocking error banner */}
       {playbackError && (
-        <div className="absolute bottom-14 left-4 right-4 bg-red-950/90 border border-red-700 text-white p-3 rounded-xl shadow-xl flex items-center justify-between gap-3 z-20 backdrop-blur-sm">
+        <div className="absolute bottom-16 left-4 right-4 bg-red-950/90 border border-red-700 text-white p-3 rounded-xl shadow-xl flex items-center justify-between gap-3 z-50 backdrop-blur-sm pointer-events-auto">
           <div className="flex items-center gap-2.5 min-w-0">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <p className="text-xs font-medium text-gray-200 truncate">{playbackError}</p>

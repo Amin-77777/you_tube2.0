@@ -101,6 +101,15 @@ export default function HistoryContent() {
                 <div className="absolute bottom-1 right-1 bg-black/85 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow">
                   {item.videoid?.duration || "0:30"}
                 </div>
+                {/* Watch progress bar */}
+                {typeof item.percentageWatched === "number" && item.percentageWatched > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
+                    <div
+                      className="h-full bg-red-600 transition-all"
+                      style={{ width: `${Math.min(100, item.percentageWatched)}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </Link>
 
