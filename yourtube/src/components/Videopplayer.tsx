@@ -26,6 +26,7 @@ import LoadingSpinner from "./video-player/LoadingSpinner";
 import ActionFeedback, { FeedbackType } from "./video-player/ActionFeedback";
 import AutoplayCountdownOverlay from "./video-player/AutoplayCountdownOverlay";
 import KeyboardShortcutsModal from "./video-player/KeyboardShortcutsModal";
+import RealtimeCaptionsOverlay from "./video-player/RealtimeCaptionsOverlay";
 import { SubtitleTrack, VideoItem } from "./video-player/types";
 
 interface VideoPlayerProps {
@@ -87,7 +88,8 @@ export default function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
-  const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState<string | null>(null);
+  const [captionLanguage, setCaptionLanguage] = useState<string>("en");
+  const [activeNativeCueText, setActiveNativeCueText] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<string>("Auto");
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(null);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
@@ -382,6 +384,37 @@ export default function VideoPlayer({
     };
   }, []);
 
+  // Native HTML5 track cuechange listener
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    const handleCueChange = () => {
+      const tracks = vid.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        const activeList = tracks[i].activeCues;
+        if (tracks[i].mode === "showing" && activeList && activeList.length > 0) {
+          const cue = activeList[0] as any;
+          if (cue && cue.text) {
+            setActiveNativeCueText(cue.text);
+            return;
+          }
+        }
+      }
+      setActiveNativeCueText(null);
+    };
+
+    for (let i = 0; i < vid.textTracks.length; i++) {
+      vid.textTracks[i].addEventListener("cuechange", handleCueChange);
+    }
+
+    return () => {
+      for (let i = 0; i < vid.textTracks.length; i++) {
+        vid.textTracks[i].removeEventListener("cuechange", handleCueChange);
+      }
+    };
+  }, [subtitles]);
+
   // Controls auto-hide timer on mouse/touch inactivity
   const resetInactivityTimer = useCallback(() => {
     setShowControls(true);
@@ -646,49 +679,40 @@ export default function VideoPlayer({
   };
 
   const handleToggleCaptions = () => {
-    if (!videoRef.current) return;
-    const tracks = videoRef.current.textTracks;
-    if (!tracks || tracks.length === 0) return;
-
     const nextState = !captionsEnabled;
     setCaptionsEnabled(nextState);
 
-    for (let i = 0; i < tracks.length; i++) {
-      tracks[i].mode = nextState ? "showing" : "hidden";
+    if (videoRef.current) {
+      const tracks = videoRef.current.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].mode = nextState ? "showing" : "hidden";
+      }
     }
   };
 
   const handleSelectSubtitleTrack = (srclang: string | null) => {
-    if (!videoRef.current) return;
-    const tracks = videoRef.current.textTracks;
-    setCurrentSubtitleTrack(srclang);
-
     if (!srclang) {
       setCaptionsEnabled(false);
-      for (let i = 0; i < tracks.length; i++) {
-        tracks[i].mode = "hidden";
-      }
       return;
     }
 
+    setCaptionLanguage(srclang);
     setCaptionsEnabled(true);
-    for (let i = 0; i < tracks.length; i++) {
-      if (tracks[i].language === srclang) {
-        tracks[i].mode = "showing";
-      } else {
-        tracks[i].mode = "hidden";
+
+    if (videoRef.current) {
+      const tracks = videoRef.current.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].mode = tracks[i].language === srclang ? "showing" : "hidden";
       }
     }
   };
 
   // Video Container Click Handling
   const handleContainerClick = (e: React.MouseEvent) => {
-    // If click happened on control buttons, ignore container tap
     if ((e.target as HTMLElement).closest("button, [role='slider'], input, a")) {
       return;
     }
 
-    // On mobile / desktop: if controls were hidden, tapping reveals them first
     if (!showControls && isPlaying) {
       resetInactivityTimer();
       return;
@@ -763,6 +787,10 @@ export default function VideoPlayer({
     const dur = videoRef.current.duration || duration;
     setCurrentTime(cur);
 
+    if (!videoRef.current.paused && !isPlaying) {
+      setIsPlaying(true);
+    }
+
     if (dur > 0 && !hasReportedCompletionRef.current) {
       const percentage = (cur / dur) * 100;
       if (percentage >= PLAYER_CONFIG.completionThreshold) {
@@ -802,7 +830,7 @@ export default function VideoPlayer({
     }
   };
 
-  // LOCKED SCREEN OVERLAY (Subscription tier required)
+  // LOCKED SCREEN OVERLAY
   const isGold = requiredTier === "Gold";
   const isSilver = requiredTier === "Silver";
   const TierIcon = isGold ? Crown : isSilver ? Shield : Zap;
@@ -1023,8 +1051,17 @@ export default function VideoPlayer({
       {/* Buffering Spinner */}
       <LoadingSpinner isBuffering={isBuffering} />
 
-      {/* Center Action Feedback Ripple */}
+      {/* Center Action Feedback Ripple (Brief 400ms flash only upon click/Space) */}
       <ActionFeedback type={feedbackType} onClear={() => setFeedbackType(null)} />
+
+      {/* Real-time Subtitles / Captions Overlay */}
+      <RealtimeCaptionsOverlay
+        captionsEnabled={captionsEnabled}
+        currentTime={currentTime}
+        videoTitle={video.videotitle}
+        language={captionLanguage}
+        nativeCueText={activeNativeCueText}
+      />
 
       {/* Autoplay Next Video Countdown Overlay */}
       {showAutoplayOverlay && nextVideo && onNextVideo && (
@@ -1061,10 +1098,11 @@ export default function VideoPlayer({
         isBuffering={isBuffering}
         isSeeking={isSeeking}
         captionsEnabled={captionsEnabled}
+        captionLanguage={captionLanguage}
         selectedQuality={selectedQuality}
         availableQualities={[...PLAYER_CONFIG.videoQualities]}
         subtitles={subtitles}
-        currentSubtitleTrack={currentSubtitleTrack}
+        currentSubtitleTrack={captionLanguage}
         videoTitle={video.videotitle}
         onPlayPause={handleTogglePlay}
         onSeek={handleSeek}

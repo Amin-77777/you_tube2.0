@@ -22,6 +22,7 @@ import { PlayerCustomControlsProps } from "./types";
 
 interface CustomControlsComponentProps extends PlayerCustomControlsProps {
   videoTitle?: string;
+  captionLanguage?: string;
 }
 
 export default function CustomControls(props: CustomControlsComponentProps) {
@@ -41,8 +42,8 @@ export default function CustomControls(props: CustomControlsComponentProps) {
     captionsEnabled,
     selectedQuality,
     availableQualities,
-    subtitles,
     videoTitle,
+    captionLanguage = "en",
 
     onPlayPause,
     onSeek,
@@ -55,6 +56,7 @@ export default function CustomControls(props: CustomControlsComponentProps) {
     onToggleTheaterMode,
     onTogglePiP,
     onToggleCaptions,
+    onSelectSubtitleTrack,
 
     onPreviousVideo,
     onNextVideo,
@@ -72,8 +74,6 @@ export default function CustomControls(props: CustomControlsComponentProps) {
   const formattedDuration = formatTime(duration, duration >= 3600);
   const formattedRemaining = formatRemainingTime(currentTime, duration);
 
-  const hasSubtitles = Array.isArray(subtitles) && subtitles.length > 0;
-
   return (
     <div
       className={`absolute inset-0 pointer-events-none flex flex-col justify-between transition-opacity duration-300 z-30 ${
@@ -87,55 +87,22 @@ export default function CustomControls(props: CustomControlsComponentProps) {
         </h3>
       </div>
 
-      {/* Center Touch Controls (YouTube Mobile Style) */}
+      {/* Center Area: ONLY shown when PAUSED (!isPlaying) */}
       <div className="flex-1 flex items-center justify-center pointer-events-none">
-        {/* On mobile / tablets or when paused, show center touch controls */}
-        {(showControls || !isPlaying) && !isBuffering && (
-          <div className="flex items-center gap-6 sm:gap-10 pointer-events-auto">
-            {/* 10s Rewind Touch Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSeekRelative(-10);
-              }}
-              aria-label="Rewind 10 seconds"
-              title="Rewind 10 seconds"
-              className="w-10 h-10 sm:w-12 sm:h-12 flex sm:hidden items-center justify-center rounded-full bg-black/50 hover:bg-black/75 text-white/90 active:scale-95 transition-all shadow-lg"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
-            {/* Big Center Play / Pause Button */}
+        {!isPlaying && !isBuffering && (
+          <div className="flex items-center gap-6 sm:gap-10 pointer-events-auto animate-in zoom-in-75 duration-150">
+            {/* Big Center Play Button (Shown ONLY when PAUSED) */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onPlayPause();
               }}
-              aria-label={isPlaying ? "Pause" : "Play"}
-              title={isPlaying ? "Pause" : "Play"}
-              className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white active:scale-95 transition-all shadow-2xl border border-white/20"
+              aria-label="Play video"
+              title="Play video (Space)"
+              className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full bg-black/65 hover:bg-black/85 hover:scale-105 text-white active:scale-95 transition-all shadow-2xl border border-white/20"
             >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 sm:w-8 sm:h-8 fill-current" />
-              ) : (
-                <Play className="w-6 h-6 sm:w-8 sm:h-8 fill-current ml-1" />
-              )}
-            </button>
-
-            {/* 10s Fast Forward Touch Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSeekRelative(10);
-              }}
-              aria-label="Fast forward 10 seconds"
-              title="Fast forward 10 seconds"
-              className="w-10 h-10 sm:w-12 sm:h-12 flex sm:hidden items-center justify-center rounded-full bg-black/50 hover:bg-black/75 text-white/90 active:scale-95 transition-all shadow-lg"
-            >
-              <RotateCw className="w-5 h-5" />
+              <Play className="w-7 h-7 sm:w-8 sm:h-8 fill-current ml-1" />
             </button>
           </div>
         )}
@@ -271,33 +238,35 @@ export default function CustomControls(props: CustomControlsComponentProps) {
 
           {/* Right Controls: Captions, Settings, PiP, Theater, Fullscreen */}
           <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
-            {/* Subtitles / Captions Toggle */}
-            {hasSubtitles && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleCaptions();
-                }}
-                aria-label={captionsEnabled ? "Turn off captions (c)" : "Turn on captions (c)"}
-                title={captionsEnabled ? "Subtitles on (c)" : "Subtitles off (c)"}
-                className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none ${
-                  captionsEnabled
-                    ? "text-red-500 hover:text-red-400 bg-white/10"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <Subtitles className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            )}
+            {/* Real-time Subtitles / Captions Toggle (CC button) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCaptions();
+              }}
+              aria-label={captionsEnabled ? "Turn off subtitles (c)" : "Turn on subtitles (c)"}
+              title={captionsEnabled ? "Subtitles on (c)" : "Subtitles off (c)"}
+              className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none ${
+                captionsEnabled
+                  ? "text-red-500 hover:text-red-400 bg-white/15 border-b-2 border-red-500"
+                  : "text-white/80 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <Subtitles className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-            {/* Settings Menu (Speed, Quality) */}
+            {/* Settings Menu (Speed, Subtitles, Quality) */}
             <SettingsMenu
               playbackRate={playbackRate}
               selectedQuality={selectedQuality}
               availableQualities={availableQualities}
+              captionsEnabled={captionsEnabled}
+              captionLanguage={captionLanguage}
               onPlaybackRateChange={onPlaybackRateChange}
               onQualityChange={onQualityChange}
+              onToggleCaptions={onToggleCaptions}
+              onSelectCaptionLanguage={(lang) => onSelectSubtitleTrack(lang)}
             />
 
             {/* Picture-in-Picture Toggle (Desktop/Tablet) */}
