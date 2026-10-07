@@ -211,6 +211,7 @@ export default function TimelineSlider({
                 preload="metadata"
                 muted
                 playsInline
+                data-preview="true"
                 crossOrigin="anonymous"
                 onLoadedData={() => setPreviewLoaded(true)}
                 className={`w-full h-full object-cover ${previewLoaded ? "opacity-100" : "opacity-0"}`}

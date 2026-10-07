@@ -75,18 +75,18 @@ export default function VolumeControl({
         onClick={onToggleMute}
         aria-label={isMuted ? "Unmute (m)" : "Mute (m)"}
         title={isMuted ? "Unmute (m)" : "Mute (m)"}
-        className="w-9 h-9 flex items-center justify-center text-white/90 hover:text-white rounded-lg hover:bg-white/10 transition-colors focus:outline-none"
+        className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-white/90 hover:text-white rounded-lg hover:bg-white/10 transition-colors focus:outline-none"
       >
         {isMuted || effectiveVolume === 0 ? (
-          <VolumeX className="w-5 h-5 text-red-400" />
+          <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
         ) : effectiveVolume < 0.5 ? (
-          <Volume1 className="w-5 h-5" />
+          <Volume1 className="w-4 h-4 sm:w-5 sm:h-5" />
         ) : (
-          <Volume2 className="w-5 h-5" />
+          <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
         )}
       </button>
 
-      {/* Draggable Slider Container */}
+      {/* Draggable Slider Container (Desktop only to prevent mobile overflow) */}
       <div
         ref={trackRef}
         role="slider"
@@ -101,7 +101,7 @@ export default function VolumeControl({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onKeyDown={handleKeyDown}
-        className="w-0 opacity-0 group-hover/volume:w-16 group-hover/volume:opacity-100 group-hover/volume:ml-1.5 focus:w-16 focus:opacity-100 focus:ml-1.5 transition-all duration-200 h-6 flex items-center cursor-pointer select-none touch-none focus:outline-none"
+        className="hidden sm:flex w-0 opacity-0 group-hover/volume:w-16 group-hover/volume:opacity-100 group-hover/volume:ml-1.5 focus:w-16 focus:opacity-100 focus:ml-1.5 transition-all duration-200 h-6 items-center cursor-pointer select-none touch-none focus:outline-none"
       >
         <div className="relative w-full h-1 bg-white/30 rounded-full overflow-hidden">
           <div

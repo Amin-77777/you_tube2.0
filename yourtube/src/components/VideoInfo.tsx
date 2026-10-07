@@ -217,7 +217,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           <Button className="ml-4 rounded-full bg-black text-white hover:bg-gray-800">Subscribe</Button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full sm:flex-wrap">
           {/* Prominent High-Visibility Download Button */}
           <Button
             variant="default"

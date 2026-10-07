@@ -41,14 +41,12 @@ const WatchPage = () => {
       // Find the requested video by _id or fallback
       let matched = list.find((v: any) => v._id === id || v.id === id);
 
-      // If still not matched, check fallback list
       if (!matched) {
         matched = DEFAULT_FALLBACK_VIDEOS.find(
           (v: any) => v._id === id || v.videotitle?.toLowerCase() === String(id).toLowerCase()
         );
       }
 
-      // If still no match but list has items, fall back to first video
       if (!matched && list.length > 0) {
         matched = list[0];
       }
@@ -139,9 +137,9 @@ const WatchPage = () => {
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto p-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="lg:col-span-2 space-y-3 sm:space-y-4">
                 <VideoInfo
                   video={currentVideo}
                   onVideoUpdate={(updated: any) => setCurrentVideo(updated)}
@@ -157,10 +155,10 @@ const WatchPage = () => {
           </div>
         </div>
       ) : (
-        /* STANDARD MODE: 2-column layout */
-        <div className="max-w-7xl mx-auto p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
+        /* STANDARD MODE: Edge-to-edge on mobile, 2-column on desktop */
+        <div className="max-w-7xl mx-auto p-0 sm:p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="lg:col-span-2 space-y-3 sm:space-y-4">
               <Videopplayer
                 video={currentVideo}
                 nextVideo={nextVideo}
@@ -169,13 +167,15 @@ const WatchPage = () => {
                 onPreviousVideo={handlePreviousVideo}
                 onTheaterModeChange={(theater) => setIsTheaterMode(theater)}
               />
-              <VideoInfo
-                video={currentVideo}
-                onVideoUpdate={(updated: any) => setCurrentVideo(updated)}
-              />
-              <Comments videoId={currentVideo._id || id} />
+              <div className="px-3 sm:px-0 space-y-3 sm:space-y-4">
+                <VideoInfo
+                  video={currentVideo}
+                  onVideoUpdate={(updated: any) => setCurrentVideo(updated)}
+                />
+                <Comments videoId={currentVideo._id || id} />
+              </div>
             </div>
-            <div className="space-y-4">
+            <div className="px-3 sm:px-0 space-y-4">
               <RelatedVideos
                 videos={allVideos.filter((v: any) => v._id !== currentVideo._id)}
               />

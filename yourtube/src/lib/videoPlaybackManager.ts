@@ -4,22 +4,22 @@
  * Automatically pauses any other playing video when a new video starts.
  */
 
-type PlaybackListener = (activePlayerId: string) => void;
-
 class VideoPlaybackManager {
-  private activePlayerId: string | null = null;
-  private activeVideoElement: HTMLVideoElement | null = null;
-  private listeners: Set<PlaybackListener> = new Set();
+  private activeVideo: HTMLVideoElement | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
-      // Global fallback listener: if any native video on the page emits 'play', pause others
+      // Global listener: when any video begins playback, pause other videos
       window.addEventListener(
         "play",
         (event) => {
           const target = event.target as HTMLVideoElement;
           if (target && target.tagName === "VIDEO") {
-            this.handleNativePlay(target);
+            // Ignore small timeline preview frame videos
+            if (target.getAttribute("data-preview") === "true") {
+              return;
+            }
+            this.handlePlay(target);
           }
         },
         true // Capture phase
@@ -27,64 +27,30 @@ class VideoPlaybackManager {
     }
   }
 
-  private handleNativePlay(targetVideo: HTMLVideoElement) {
+  public handlePlay(targetVideo: HTMLVideoElement) {
+    if (!targetVideo) return;
+    this.activeVideo = targetVideo;
+
     if (typeof document === "undefined") return;
-    const allVideos = document.querySelectorAll<HTMLVideoElement>("video");
-    allVideos.forEach((v) => {
-      if (v !== targetVideo && !v.paused && !v.ended) {
-        try {
-          v.pause();
-        } catch (_) {}
-      }
-    });
+
+    try {
+      const allVideos = document.querySelectorAll<HTMLVideoElement>("video:not([data-preview='true'])");
+      allVideos.forEach((v) => {
+        if (v !== targetVideo && !v.paused) {
+          try {
+            v.pause();
+          } catch (_) {}
+        }
+      });
+    } catch (_) {}
   }
 
-  /**
-   * Registers a player instance. Returns an unregister cleanup function.
-   */
-  public register(playerId: string, onPauseCallback: () => void): () => void {
-    const listener: PlaybackListener = (activeId) => {
-      if (activeId !== playerId) {
-        onPauseCallback();
-      }
-    };
-    this.listeners.add(listener);
-
-    return () => {
-      this.listeners.delete(listener);
-      if (this.activePlayerId === playerId) {
-        this.activePlayerId = null;
-        this.activeVideoElement = null;
-      }
-    };
+  public notifyPlay(targetVideo: HTMLVideoElement) {
+    this.handlePlay(targetVideo);
   }
 
-  /**
-   * Called whenever a video begins playback.
-   * Pauses all other videos and notifies registered listeners.
-   */
-  public notifyPlay(playerId: string, videoElement?: HTMLVideoElement | null) {
-    this.activePlayerId = playerId;
-    this.activeVideoElement = videoElement || null;
-
-    if (videoElement) {
-      this.handleNativePlay(videoElement);
-    }
-
-    this.listeners.forEach((listener) => {
-      try {
-        listener(playerId);
-      } catch (err) {
-        console.warn("[VideoPlaybackManager] Error in listener:", err);
-      }
-    });
-  }
-
-  /**
-   * Gets the ID of the currently playing video player.
-   */
-  public getActivePlayerId(): string | null {
-    return this.activePlayerId;
+  public getActiveVideo(): HTMLVideoElement | null {
+    return this.activeVideo;
   }
 }
 

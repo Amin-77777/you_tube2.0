@@ -76,7 +76,10 @@ export default function SettingsMenu({
 
       {/* Dropdown Menu Popover */}
       {isOpen && (
-        <div className="absolute bottom-11 right-0 w-60 bg-black/95 text-white backdrop-blur-md rounded-xl border border-white/15 shadow-2xl p-1 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-10 sm:bottom-11 right-0 w-52 sm:w-60 bg-black/95 text-white backdrop-blur-md rounded-xl border border-white/15 shadow-2xl p-1 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        >
           {/* MAIN VIEW */}
           {currentView === "main" && (
             <div className="py-1">

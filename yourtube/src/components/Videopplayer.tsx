@@ -107,7 +107,6 @@ export default function VideoPlayer({
   const videoAccess = (video?.accessLevel || "free").toLowerCase();
 
   const subtitles: SubtitleTrack[] = video?.subtitles || [
-    // Provide sample captions if video matches sample videos for demonstration
     {
       label: "English",
       srclang: "en",
@@ -190,20 +189,15 @@ export default function VideoPlayer({
       .catch(() => {});
   }, [user]);
 
-  // 2. Prevent Multiple Videos From Playing (register with videoPlaybackManager)
-  useEffect(() => {
-    const playerId = `player_${video?._id || "default"}_${Date.now()}`;
-    const unregister = videoPlaybackManager.register(playerId, () => {
-      if (videoRef.current && !videoRef.current.paused) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    });
-
-    return () => {
-      unregister();
-    };
-  }, [video?._id]);
+  // 2. Multi-video coordination handler
+  const handleNativePlay = () => {
+    if (videoRef.current) {
+      videoPlaybackManager.notifyPlay(videoRef.current);
+    }
+    setIsBuffering(false);
+    setIsPlaying(true);
+    setPlaybackError(null);
+  };
 
   // 3. Reset playback state on source or video change
   useEffect(() => {
@@ -258,7 +252,6 @@ export default function VideoPlayer({
           ? forceCompleted
           : percentage >= PLAYER_CONFIG.completionThreshold;
 
-      // 1) Save to localStorage for instant client persistence
       try {
         localStorage.setItem(
           `yt_watch_progress_${video._id}`,
@@ -272,7 +265,6 @@ export default function VideoPlayer({
         );
       } catch (_) {}
 
-      // 2) If logged in, save to backend history
       if (user?._id) {
         try {
           await axiosInstance.post(`/history/progress/${video._id}`, {
@@ -296,7 +288,6 @@ export default function VideoPlayer({
     let savedPos = 0;
     let savedCompleted = false;
 
-    // Check backend first if user logged in
     if (user?._id) {
       try {
         const res = await axiosInstance.get(`/history/progress/${video._id}`);
@@ -307,7 +298,6 @@ export default function VideoPlayer({
       } catch (_) {}
     }
 
-    // Fallback to localStorage if backend had no position
     if (savedPos <= 0) {
       try {
         const stored = localStorage.getItem(`yt_watch_progress_${video._id}`);
@@ -320,9 +310,11 @@ export default function VideoPlayer({
     }
 
     const totalDur = videoRef.current.duration || duration;
-    // Sensible handling for nearly completed videos:
-    // If user already completed or was within the last 5 seconds / 90% threshold, restart at 0s
-    if (savedCompleted || (totalDur > 0 && (savedPos / totalDur) * 100 >= PLAYER_CONFIG.completionThreshold) || (totalDur > 0 && totalDur - savedPos < 5)) {
+    if (
+      savedCompleted ||
+      (totalDur > 0 && (savedPos / totalDur) * 100 >= PLAYER_CONFIG.completionThreshold) ||
+      (totalDur > 0 && totalDur - savedPos < 5)
+    ) {
       videoRef.current.currentTime = 0;
       setCurrentTime(0);
     } else if (savedPos > 0 && savedPos < totalDur) {
@@ -354,7 +346,7 @@ export default function VideoPlayer({
     };
   }, [saveProgress]);
 
-  // Fullscreen change detection (handles Escape key)
+  // Fullscreen change detection
   useEffect(() => {
     const handleFullscreenChange = () => {
       const active = Boolean(
@@ -390,7 +382,7 @@ export default function VideoPlayer({
     };
   }, []);
 
-  // Controls auto-hide timer on mouse inactivity
+  // Controls auto-hide timer on mouse/touch inactivity
   const resetInactivityTimer = useCallback(() => {
     setShowControls(true);
     if (inactivityTimerRef.current) {
@@ -413,10 +405,9 @@ export default function VideoPlayer({
     }
   };
 
-  // Keyboard controls listener (Section 9)
+  // Keyboard controls listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Do not trigger shortcuts when user is focused inside input, textarea, select, or contenteditable
       const target = e.target as HTMLElement;
       if (
         target &&
@@ -429,8 +420,6 @@ export default function VideoPlayer({
       }
 
       if (!videoRef.current || !isAllowed) return;
-
-      const vid = videoRef.current;
 
       switch (e.key) {
         case " ":
@@ -536,10 +525,9 @@ export default function VideoPlayer({
         .then(() => {
           setIsPlaying(true);
           setFeedbackType("play");
-          videoPlaybackManager.notifyPlay(
-            `player_${video?._id}`,
-            videoRef.current
-          );
+          if (videoRef.current) {
+            videoPlaybackManager.notifyPlay(videoRef.current);
+          }
         })
         .catch(console.warn);
     } else {
@@ -598,7 +586,6 @@ export default function VideoPlayer({
 
   const handleQualityChange = (quality: string) => {
     setSelectedQuality(quality);
-    // If multi-quality sources exist in video, switch source while preserving currentTime
     if (Array.isArray(video?.sources) && video.sources.length > 0) {
       const match = video.sources.find((s) => s.quality === quality);
       if (match && match.src) {
@@ -694,22 +681,26 @@ export default function VideoPlayer({
     }
   };
 
-  // Video Container Single / Double click handling
+  // Video Container Click Handling
   const handleContainerClick = (e: React.MouseEvent) => {
-    // Prevent click on controls bar from triggering video play/pause
-    if ((e.target as HTMLElement).closest(".pointer-events-auto")) {
+    // If click happened on control buttons, ignore container tap
+    if ((e.target as HTMLElement).closest("button, [role='slider'], input, a")) {
+      return;
+    }
+
+    // On mobile / desktop: if controls were hidden, tapping reveals them first
+    if (!showControls && isPlaying) {
+      resetInactivityTimer();
       return;
     }
 
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
-      // Double click => Toggle fullscreen
       handleToggleFullscreen();
     } else {
       clickTimeoutRef.current = setTimeout(() => {
         clickTimeoutRef.current = null;
-        // Single click => Toggle play/pause
         handleTogglePlay();
       }, 250);
     }
@@ -772,8 +763,6 @@ export default function VideoPlayer({
     const dur = videoRef.current.duration || duration;
     setCurrentTime(cur);
 
-    // Continuous watch progress check:
-    // 1) Video completion logic (Section 7)
     if (dur > 0 && !hasReportedCompletionRef.current) {
       const percentage = (cur / dur) * 100;
       if (percentage >= PLAYER_CONFIG.completionThreshold) {
@@ -782,7 +771,6 @@ export default function VideoPlayer({
       }
     }
 
-    // 2) Periodic Progress update (Section 6: Configurable interval, avoids excessive API calls)
     const now = Date.now();
     if (now - lastProgressSaveTimeRef.current >= PLAYER_CONFIG.progressSaveInterval) {
       lastProgressSaveTimeRef.current = now;
@@ -809,7 +797,6 @@ export default function VideoPlayer({
     setIsPlaying(false);
     saveProgress(duration, true);
 
-    // Autoplay Next Video (Section 15)
     if (nextVideo && onNextVideo) {
       setShowAutoplayOverlay(true);
     }
@@ -833,27 +820,27 @@ export default function VideoPlayer({
 
   if (!isAllowed && accessChecked) {
     return (
-      <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center border border-white/10 group">
+      <div className="relative aspect-video rounded-none sm:rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center border border-white/10 group">
         <div
           className="absolute inset-0 bg-cover bg-center filter blur-md scale-105 opacity-25"
           style={{ backgroundImage: `url(${posterSrc})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60" />
 
-        <div className="relative z-10 max-w-lg mx-4 p-6 sm:p-8 text-center flex flex-col items-center space-y-4">
+        <div className="relative z-10 max-w-lg mx-4 p-4 sm:p-8 text-center flex flex-col items-center space-y-3 sm:space-y-4">
           <div
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-b border shadow-xl ${themeGlow}`}
+            className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center bg-gradient-to-b border shadow-xl ${themeGlow}`}
           >
-            <Lock className="w-8 h-8 drop-shadow-md" />
+            <Lock className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-md" />
           </div>
 
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-white/10 text-white border border-white/10 backdrop-blur-md">
-              <TierIcon className="w-3.5 h-3.5" />
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-widest bg-white/10 text-white border border-white/10 backdrop-blur-md">
+              <TierIcon className="w-3 h-3" />
               <span>{requiredTier} Exclusive Content</span>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
               Unlock Full Video with {requiredTier}
             </h2>
 
@@ -865,7 +852,7 @@ export default function VideoPlayer({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-left w-full max-w-sm bg-white/5 border border-white/10 rounded-xl p-3 text-[11px] text-gray-300 backdrop-blur-sm">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-left w-full max-w-sm bg-white/5 border border-white/10 rounded-xl p-2.5 sm:p-3 text-[10px] sm:text-[11px] text-gray-300 backdrop-blur-sm">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>
@@ -886,11 +873,11 @@ export default function VideoPlayer({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-sm pt-1">
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-sm pt-1">
             {!user ? (
               <Button
                 onClick={() => router.push(`/signin?redirect=/watch/${video?._id}`)}
-                className={`w-full py-5 rounded-xl text-xs ${buttonGradient} flex items-center justify-center gap-2`}
+                className={`w-full py-4 sm:py-5 rounded-xl text-xs ${buttonGradient} flex items-center justify-center gap-2`}
               >
                 <span>Sign In to Unlock</span>
                 <ArrowRight className="w-4 h-4" />
@@ -900,7 +887,7 @@ export default function VideoPlayer({
                 onClick={() =>
                   router.push(`/subscriptions?plan=${requiredTier}&required=${requiredTier}`)
                 }
-                className={`w-full py-5 rounded-xl text-xs ${buttonGradient} flex items-center justify-center gap-2`}
+                className={`w-full py-4 sm:py-5 rounded-xl text-xs ${buttonGradient} flex items-center justify-center gap-2`}
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Upgrade to {requiredTier} Plan</span>
@@ -910,7 +897,7 @@ export default function VideoPlayer({
             <Button
               variant="outline"
               onClick={() => router.push("/subscriptions")}
-              className="w-full sm:w-auto py-5 rounded-xl text-xs font-semibold text-white border-white/20 bg-white/10 hover:bg-white/20 hover:text-white"
+              className="w-full sm:w-auto py-4 sm:py-5 rounded-xl text-xs font-semibold text-white border-white/20 bg-white/10 hover:bg-white/20 hover:text-white"
             >
               Explore Plans
             </Button>
@@ -923,38 +910,38 @@ export default function VideoPlayer({
   // WATCH TIME LIMIT EXCEEDED OVERLAY
   if (watchLimitReached) {
     return (
-      <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center border border-red-500/30">
+      <div className="relative aspect-video rounded-none sm:rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center border border-red-500/30">
         <div
           className="absolute inset-0 bg-cover bg-center filter blur-md scale-105 opacity-20"
           style={{ backgroundImage: `url(${posterSrc})` }}
         />
         <div className="absolute inset-0 bg-black/80" />
 
-        <div className="relative z-10 max-w-md mx-4 p-6 text-center space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center shadow-lg">
-            <Clock className="w-7 h-7" />
+        <div className="relative z-10 max-w-md mx-4 p-4 sm:p-6 text-center space-y-3 sm:space-y-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center shadow-lg">
+            <Clock className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white">Daily Watch Limit Reached</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-white">Daily Watch Limit Reached</h2>
             <p className="text-xs text-gray-300">
               You have used your daily watch allowance ({watchLimitInfo?.limitMinutes || 30} mins)
               for the <strong>{userPlan}</strong> plan today.
             </p>
           </div>
 
-          <p className="text-[11px] text-gray-400 bg-white/5 border border-white/10 rounded-xl p-3">
+          <p className="text-[10px] sm:text-[11px] text-gray-400 bg-white/5 border border-white/10 rounded-xl p-2.5 sm:p-3">
             Watch time limits automatically reset at midnight UTC every day. To continue watching now
             with unlimited watch time, upgrade to Gold VIP.
           </p>
 
-          <div className="flex items-center justify-center gap-3 pt-2">
+          <div className="flex items-center justify-center gap-2.5 pt-1">
             <Button
               onClick={() => router.push("/subscriptions?plan=Gold")}
-              className="rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-extrabold text-xs px-5 shadow-lg shadow-yellow-500/20"
+              className="rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-extrabold text-xs px-4 sm:px-5 shadow-lg shadow-yellow-500/20"
             >
               <Crown className="w-3.5 h-3.5 mr-1" />
-              Upgrade to Gold (Unlimited)
+              Upgrade to Gold
             </Button>
             <Button
               variant="outline"
@@ -972,7 +959,7 @@ export default function VideoPlayer({
   // NO SOURCE AVAILABLE
   if (!activeSrc) {
     return (
-      <div className="aspect-video bg-gray-900 rounded-2xl flex flex-col items-center justify-center text-white p-6 shadow-inner">
+      <div className="aspect-video bg-gray-900 rounded-none sm:rounded-2xl flex flex-col items-center justify-center text-white p-6 shadow-inner">
         <AlertCircle className="w-12 h-12 text-gray-500 mb-2" />
         <p className="font-medium text-gray-300">No video source provided</p>
       </div>
@@ -986,11 +973,11 @@ export default function VideoPlayer({
       onClick={handleContainerClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl select-none group focus:outline-none ${
+      className={`relative w-full aspect-video bg-black rounded-none sm:rounded-2xl overflow-hidden shadow-2xl select-none group focus:outline-none ${
         isFullscreen ? "rounded-none w-screen h-screen aspect-auto" : ""
       } ${!showControls && isPlaying ? "cursor-none" : ""}`}
     >
-      {/* HTML5 Native Video Element (controls disabled!) */}
+      {/* HTML5 Native Video Element */}
       <video
         key={activeSrc}
         ref={videoRef}
@@ -1005,11 +992,8 @@ export default function VideoPlayer({
         onLoadedData={() => setIsBuffering(false)}
         onCanPlay={() => setIsBuffering(false)}
         onWaiting={() => setIsBuffering(true)}
-        onPlaying={() => {
-          setIsBuffering(false);
-          setIsPlaying(true);
-          setPlaybackError(null);
-        }}
+        onPlay={handleNativePlay}
+        onPlaying={handleNativePlay}
         onPause={() => setIsPlaying(false)}
         onTimeUpdate={handleTimeUpdate}
         onProgress={handleProgress}
@@ -1022,7 +1006,6 @@ export default function VideoPlayer({
           <source key={idx} src={s} type="video/mp4" />
         ))}
 
-        {/* Captions Tracks (HTML5 <track>) */}
         {subtitles.map((track, idx) => (
           <track
             key={idx}
@@ -1105,10 +1088,10 @@ export default function VideoPlayer({
 
       {/* Non-blocking error banner */}
       {playbackError && (
-        <div className="absolute bottom-16 left-4 right-4 bg-red-950/90 border border-red-700 text-white p-3 rounded-xl shadow-xl flex items-center justify-between gap-3 z-50 backdrop-blur-sm pointer-events-auto">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <p className="text-xs font-medium text-gray-200 truncate">{playbackError}</p>
+        <div className="absolute bottom-14 sm:bottom-16 left-3 right-3 sm:left-4 sm:right-4 bg-red-950/90 border border-red-700 text-white p-2.5 sm:p-3 rounded-xl shadow-xl flex items-center justify-between gap-2.5 z-50 backdrop-blur-sm pointer-events-auto">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 flex-shrink-0" />
+            <p className="text-[11px] sm:text-xs font-medium text-gray-200 truncate">{playbackError}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button
