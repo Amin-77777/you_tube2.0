@@ -215,7 +215,7 @@ export default function DownloadsPage() {
 
   if (!user) {
     return (
-      <main className="flex-1 p-6 md:p-10 max-w-5xl">
+      <div className="flex-1 p-6 md:p-10 max-w-5xl">
         <Head>
           <title>Downloads - YourTube</title>
         </Head>
@@ -233,12 +233,12 @@ export default function DownloadsPage() {
             </Button>
           </Link>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <Head>
         <title>Downloads & Quota - YourTube</title>
       </Head>
@@ -465,6 +465,6 @@ export default function DownloadsPage() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }

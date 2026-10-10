@@ -358,7 +358,7 @@ export default function SubscriptionsPage() {
   };
 
   return (
-    <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-10">
+    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-10">
       <Head>
         <title>Subscription Plans - YourTube Premium</title>
       </Head>
@@ -783,6 +783,6 @@ export default function SubscriptionsPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

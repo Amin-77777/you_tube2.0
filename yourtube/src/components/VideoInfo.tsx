@@ -205,55 +205,61 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-gray-100">
-        <div className="flex items-center gap-4">
-          <Avatar className="w-10 h-10">
-            <AvatarFallback>{video.videochanel[0]}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="font-medium">{video.videochanel}</h3>
-            <p className="text-sm text-gray-600">1.2M subscribers</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+        {/* Channel info & Subscribe */}
+        <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar className="w-10 h-10 shrink-0">
+              <AvatarFallback>{video.videochanel?.[0] || "C"}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">{video.videochanel}</h3>
+              <p className="text-xs text-gray-500">1.2M subscribers</p>
+            </div>
           </div>
-          <Button className="ml-4 rounded-full bg-black text-white hover:bg-gray-800">Subscribe</Button>
+          <Button className="shrink-0 rounded-full bg-black text-white hover:bg-gray-800 text-xs sm:text-sm px-4 py-1.5 h-9 font-medium shadow-xs">
+            Subscribe
+          </Button>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full sm:flex-wrap">
+        {/* Action pills bar - horizontal scroll with no scrollbar on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap w-full md:w-auto py-1">
           {/* Prominent High-Visibility Download Button */}
           <Button
             variant="default"
             size="sm"
             disabled={downloading}
             onClick={handleDownload}
-            className="bg-red-600 hover:bg-red-700 text-white rounded-full font-bold px-4 shadow-sm flex items-center gap-1.5 transition-all"
+            className="shrink-0 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold px-4 shadow-xs flex items-center gap-1.5 transition-all text-xs sm:text-sm h-9"
             title="Download Video for Offline Viewing"
           >
             <Download className={`w-4 h-4 text-white ${downloading ? "animate-bounce" : ""}`} />
             <span>{downloading ? "Preparing..." : "Download"}</span>
           </Button>
 
-          <div className="flex items-center bg-gray-100 rounded-full">
+          <div className="shrink-0 flex items-center bg-gray-100 rounded-full h-9">
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-l-full"
+              className="rounded-l-full h-9 px-3 text-xs sm:text-sm"
               onClick={handleLike}
             >
               <ThumbsUp
-                className={`w-5 h-5 mr-2 ${
+                className={`w-4 h-4 mr-1.5 ${
                   isLiked ? "fill-black text-black" : ""
                 }`}
               />
               {likes.toLocaleString()}
             </Button>
-            <div className="w-px h-6 bg-gray-300" />
+            <div className="w-px h-5 bg-gray-300" />
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-r-full"
+              className="rounded-r-full h-9 px-3 text-xs sm:text-sm"
               onClick={handleDislike}
             >
               <ThumbsDown
-                className={`w-5 h-5 mr-2 ${
+                className={`w-4 h-4 mr-1.5 ${
                   isDisliked ? "fill-black text-black" : ""
                 }`}
               />
@@ -264,40 +270,40 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className={`bg-gray-100 rounded-full ${
+            className={`shrink-0 bg-gray-100 rounded-full h-9 px-3 text-xs sm:text-sm ${
               isWatchLater ? "text-primary" : ""
             }`}
             onClick={handleWatchLater}
           >
-            <Clock className="w-5 h-5 mr-2" />
+            <Clock className="w-4 h-4 mr-1.5" />
             {isWatchLater ? "Saved" : "Watch Later"}
           </Button>
 
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 rounded-full"
+            className="shrink-0 bg-gray-100 rounded-full h-9 px-3 text-xs sm:text-sm"
           >
-            <Share className="w-5 h-5 mr-2" />
+            <Share className="w-4 h-4 mr-1.5" />
             Share
           </Button>
 
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 hover:bg-gray-200 rounded-full text-blue-600 font-medium"
+            className="shrink-0 bg-gray-100 hover:bg-gray-200 rounded-full text-blue-600 font-medium h-9 px-3 text-xs sm:text-sm"
             onClick={() => setIsEditModalOpen(true)}
           >
-            <ImageIcon className="w-5 h-5 mr-1.5 text-blue-600" />
+            <ImageIcon className="w-4 h-4 mr-1.5 text-blue-600" />
             Thumbnail
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
-            className="bg-gray-100 rounded-full"
+            className="shrink-0 bg-gray-100 rounded-full h-9 w-9"
           >
-            <MoreHorizontal className="w-5 h-5" />
+            <MoreHorizontal className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -353,12 +359,12 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
           <Button
             onClick={handleDownload}
             disabled={downloading}
             size="sm"
-            className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-5 shadow-xs"
+            className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-5 shadow-xs flex-1 sm:flex-none justify-center"
           >
             <Download className={`w-4 h-4 mr-1.5 ${downloading ? "animate-bounce" : ""}`} />
             {downloading ? "Preparing..." : "Download Now"}
@@ -367,7 +373,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             variant="outline"
             size="sm"
             onClick={() => router.push("/subscriptions")}
-            className="rounded-full text-xs font-semibold border-red-200 text-red-700 hover:bg-red-100/50"
+            className="rounded-full text-xs font-semibold border-red-200 text-red-700 hover:bg-red-100/50 flex-1 sm:flex-none justify-center"
           >
             View Quota Plans
           </Button>

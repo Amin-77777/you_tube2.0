@@ -195,7 +195,7 @@ export default function SubscriptionDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50/60 p-4 md:p-8">
+    <div className="min-h-screen bg-gray-50/60 p-4 md:p-8">
       <Head>
         <title>Subscription Dashboard - YourTube</title>
       </Head>
@@ -892,6 +892,6 @@ export default function SubscriptionDashboard() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

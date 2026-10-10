@@ -89,9 +89,9 @@ export default function WatchLaterContent() {
 
       <div className="space-y-4">
         {watchLater.map((item) => (
-          <div key={item._id} className="flex gap-4 group">
+          <div key={item._id} className="flex gap-3 sm:gap-4 group">
             <Link href={`/watch/${item.videoid?._id}`} className="flex-shrink-0">
-              <div className="relative w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden shadow-sm">
+              <div className="relative w-32 sm:w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden shadow-sm">
                 <img
                   src={getThumbnailSrc(item.videoid)}
                   alt={item.videoid?.videotitle || "Video thumbnail"}

@@ -54,7 +54,11 @@ const Comments = ({ videoId }: any) => {
     }
   };
   if (loading) {
-    return <div>Loading history...</div>;
+    return (
+      <div className="py-4 text-center text-sm text-gray-500 animate-pulse">
+        Loading comments...
+      </div>
+    );
   }
   const handleSubmitComment = async () => {
     if (!user || !newComment.trim()) return;

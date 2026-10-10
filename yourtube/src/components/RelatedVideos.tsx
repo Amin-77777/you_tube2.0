@@ -27,7 +27,7 @@ export default function RelatedVideos({ videos }: RelatedVideosProps) {
           href={`/watch/${video._id}`}
           className="flex gap-2.5 group focus:outline-none"
         >
-          <div className="relative w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+          <div className="relative w-32 sm:w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
             <img
               src={getThumbnailSrc(video)}
               alt={video.videotitle || "Video thumbnail"}
@@ -41,11 +41,11 @@ export default function RelatedVideos({ videos }: RelatedVideosProps) {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-600">
+            <h3 className="font-medium text-xs sm:text-sm line-clamp-2 group-hover:text-blue-600 leading-snug">
               {video.videotitle || "Untitled Video"}
             </h3>
-            <p className="text-xs text-gray-600 mt-1">{video.videochanel || "Community Channel"}</p>
-            <p className="text-xs text-gray-600">
+            <p className="text-[11px] sm:text-xs text-gray-600 mt-0.5 truncate">{video.videochanel || "Community Channel"}</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
               {typeof video.views === "number" ? video.views.toLocaleString() : 0} views •{" "}
               {video.createdAt ? formatDistanceToNow(new Date(video.createdAt)) + " ago" : "Recently"}
             </p>
