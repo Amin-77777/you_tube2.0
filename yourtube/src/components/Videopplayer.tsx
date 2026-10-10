@@ -732,11 +732,14 @@ export default function VideoPlayer({
 
   // Video Error and Retry handling
   const handleVideoError = () => {
+    setIsBuffering(false);
     if (currentSourceIndex + 1 < sources.length) {
+      const nextIdx = currentSourceIndex + 1;
       console.warn(
-        `Source ${activeSrc} failed. Switching to alternate: ${sources[currentSourceIndex + 1]}`
+        `Source ${activeSrc} failed. Switching to alternate fallback: ${sources[nextIdx]}`
       );
-      setCurrentSourceIndex((prev) => prev + 1);
+      setPlaybackError(null);
+      setCurrentSourceIndex(nextIdx);
       return;
     }
 
@@ -764,7 +767,13 @@ export default function VideoPlayer({
 
   const handleRetry = () => {
     setPlaybackError(null);
-    setCurrentSourceIndex(0);
+    setIsBuffering(true);
+    if (sources.length > 1) {
+      const nextIdx = (currentSourceIndex + 1) % sources.length;
+      setCurrentSourceIndex(nextIdx);
+    } else {
+      setCurrentSourceIndex(0);
+    }
     if (videoRef.current) {
       videoRef.current.load();
       videoRef.current.play().catch(console.warn);
@@ -1013,12 +1022,17 @@ export default function VideoPlayer({
         poster={posterSrc}
         playsInline
         preload="metadata"
-        crossOrigin="anonymous"
         className="w-full h-full object-contain bg-black"
         onLoadStart={() => setIsBuffering(true)}
         onLoadedMetadata={handleLoadedMetadata}
-        onLoadedData={() => setIsBuffering(false)}
-        onCanPlay={() => setIsBuffering(false)}
+        onLoadedData={() => {
+          setIsBuffering(false);
+          setPlaybackError(null);
+        }}
+        onCanPlay={() => {
+          setIsBuffering(false);
+          setPlaybackError(null);
+        }}
         onWaiting={() => setIsBuffering(true)}
         onPlay={handleNativePlay}
         onPlaying={handleNativePlay}
@@ -1049,7 +1063,7 @@ export default function VideoPlayer({
       </video>
 
       {/* Buffering Spinner */}
-      <LoadingSpinner isBuffering={isBuffering} />
+      <LoadingSpinner isBuffering={isBuffering} hasError={Boolean(playbackError)} />
 
       {/* Center Action Feedback Ripple (Brief 400ms flash only upon click/Space) */}
       <ActionFeedback type={feedbackType} onClear={() => setFeedbackType(null)} />

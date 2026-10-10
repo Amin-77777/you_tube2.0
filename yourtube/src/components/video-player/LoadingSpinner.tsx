@@ -4,10 +4,11 @@ import React from "react";
 
 interface LoadingSpinnerProps {
   isBuffering: boolean;
+  hasError?: boolean;
 }
 
-export default function LoadingSpinner({ isBuffering }: LoadingSpinnerProps) {
-  if (!isBuffering) return null;
+export default function LoadingSpinner({ isBuffering, hasError = false }: LoadingSpinnerProps) {
+  if (!isBuffering || hasError) return null;
 
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">

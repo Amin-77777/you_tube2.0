@@ -59,10 +59,23 @@ export const getVideoSrc = (path?: string): string => {
  * Returns fallback video sources in priority order to guarantee playback.
  */
 export const getVideoSources = (path?: string): string[] => {
-  if (!path) return [];
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) {
-    return [path, "https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files/big_buck_bunny.mp4"];
+  const fallbacks = [
+    "https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files/big_buck_bunny.mp4",
+    "https://vjs.zencdn.net/v/oceans.mp4",
+    "https://webrtc.github.io/samples/src/video/chrome.mp4",
+  ];
+
+  if (!path) return fallbacks;
+
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:") ||
+    path.startsWith("data:")
+  ) {
+    return [path, ...fallbacks.filter((f) => f !== path)];
   }
+
   const normalized = path.replace(/\\/g, "/");
   const uploadIdx = normalized.indexOf("uploads/");
   const cleanPath = uploadIdx !== -1 ? normalized.slice(uploadIdx) : normalized.replace(/^\//, "");
@@ -71,11 +84,7 @@ export const getVideoSources = (path?: string): string[] => {
   const relativeProxyUrl = `/${cleanPath}`;
 
   // Prioritize direct backend URL, with relative Next.js proxy/static fallback, and resilient CDN fallback
-  return [
-    backendFullUrl,
-    relativeProxyUrl,
-    "https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files/big_buck_bunny.mp4",
-  ];
+  return [backendFullUrl, relativeProxyUrl, ...fallbacks];
 };
 
 /**
@@ -189,10 +198,10 @@ export const DEFAULT_FALLBACK_VIDEOS = [
   {
     _id: "default-3",
     videotitle: "Sintel - Fantasy Dragon Story Short Film",
-    filepath: "https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_1MB.mp4",
+    filepath: "https://media.w3.org/2010/05/sintel/trailer.mp4",
     thumbnail: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
     videochanel: "Durian Animation",
-    duration: "0:10",
+    duration: "0:52",
     views: 450000,
     Like: 18200,
     accessLevel: "silver",
@@ -244,10 +253,10 @@ export const DEFAULT_FALLBACK_VIDEOS = [
   {
     _id: "default-8",
     videotitle: "Introduction to YourTube",
-    filepath: "uploads/2026-09-22T18-17-06.007Z-2025-06-25T06-09-29.296Z-vdo.mp4",
+    filepath: "https://vjs.zencdn.net/v/oceans.mp4",
     thumbnail: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=80",
     videochanel: "Official Channel",
-    duration: "0:30",
+    duration: "0:46",
     views: 226,
     Like: 24,
     accessLevel: "free",
@@ -255,21 +264,21 @@ export const DEFAULT_FALLBACK_VIDEOS = [
   {
     _id: "default-9",
     videotitle: "Mobile Cinematic Video & Highlights",
-    filepath: "uploads/2026-07-21T16-53-50.655Z-lv_0_20260623153455_processed.mp4",
+    filepath: "https://media.w3.org/2010/05/bunny/trailer.mp4",
     thumbnail: "https://images.unsplash.com/photo-1512499617640-c74ae3a79d37?w=800&auto=format&fit=crop&q=80",
     videochanel: "Creator Studio",
-    duration: "0:31",
-    views: 310,
+    duration: "0:32",
+    views: 319,
     Like: 45,
     accessLevel: "silver",
   },
   {
     _id: "default-10",
     videotitle: "Urban Street Style & Everyday Bag Tour",
-    filepath: "uploads/2026-07-21T16-53-50.655Z-lv_0_20260623153455_processed.mp4",
+    filepath: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4",
     thumbnail: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&auto=format&fit=crop&q=80",
     videochanel: "Style & Gear",
-    duration: "0:31",
+    duration: "0:08",
     views: 520,
     Like: 78,
     accessLevel: "free",
@@ -277,10 +286,10 @@ export const DEFAULT_FALLBACK_VIDEOS = [
   {
     _id: "default-11",
     videotitle: "Action Camera Adventure & Vlog",
-    filepath: "uploads/2026-07-21T16-52-57.468Z-lv_0_20260623153455_processed.mp4",
+    filepath: "https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-576p.mp4",
     thumbnail: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=800&auto=format&fit=crop&q=80",
     videochanel: "Adventure Trails",
-    duration: "0:31",
+    duration: "0:30",
     views: 640,
     Like: 92,
     accessLevel: "bronze",

@@ -87,22 +87,55 @@ export default function CustomControls(props: CustomControlsComponentProps) {
         </h3>
       </div>
 
-      {/* Center Area: ONLY shown when PAUSED (!isPlaying) */}
+      {/* Center Area: Clean on desktop (like YouTube desktop), auto-hiding touch controls on mobile */}
       <div className="flex-1 flex items-center justify-center pointer-events-none">
-        {!isPlaying && !isBuffering && (
-          <div className="flex items-center gap-6 sm:gap-10 pointer-events-auto animate-in zoom-in-75 duration-150">
-            {/* Big Center Play Button (Shown ONLY when PAUSED) */}
+        {/* On mobile touch devices only: Show touch play/pause controls when user taps (showControls is true) */}
+        {showControls && !isBuffering && (
+          <div className="flex sm:hidden items-center gap-6 pointer-events-auto animate-in zoom-in-75 duration-150">
+            {/* 10s Rewind Touch Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSeekRelative(-10);
+              }}
+              aria-label="Rewind 10 seconds"
+              title="Rewind 10 seconds"
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/90 active:scale-90 transition-all shadow-lg border border-white/10"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+
+            {/* Center Play / Pause Toggle Button */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onPlayPause();
               }}
-              aria-label="Play video"
-              title="Play video (Space)"
-              className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full bg-black/65 hover:bg-black/85 hover:scale-105 text-white active:scale-95 transition-all shadow-2xl border border-white/20"
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+              title={isPlaying ? "Pause video" : "Play video"}
+              className="w-14 h-14 flex items-center justify-center rounded-full bg-black/70 hover:bg-black/90 hover:scale-105 text-white active:scale-95 transition-all shadow-2xl border border-white/20"
             >
-              <Play className="w-7 h-7 sm:w-8 sm:h-8 fill-current ml-1" />
+              {isPlaying ? (
+                <Pause className="w-7 h-7 fill-current" />
+              ) : (
+                <Play className="w-7 h-7 fill-current ml-0.5" />
+              )}
+            </button>
+
+            {/* 10s Fast Forward Touch Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSeekRelative(10);
+              }}
+              aria-label="Fast forward 10 seconds"
+              title="Fast forward 10 seconds"
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/90 active:scale-90 transition-all shadow-lg border border-white/10"
+            >
+              <RotateCw className="w-5 h-5" />
             </button>
           </div>
         )}

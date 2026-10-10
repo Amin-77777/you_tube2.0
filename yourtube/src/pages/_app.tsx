@@ -9,6 +9,7 @@ import { useRouter } from "next/router";
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const isVideoRoom = router.pathname.startsWith("/video-call/[roomId]");
+  const isWatchPage = router.pathname.startsWith("/watch");
 
   return (
     <UserProvider>
@@ -16,9 +17,11 @@ export default function App({ Component, pageProps }: AppProps) {
         <title>Your-Tube Clone</title>
         {!isVideoRoom && <Header />}
         <Toaster />
-        <div className="flex">
-          {!isVideoRoom && <Sidebar />}
-          <Component {...pageProps} />
+        <div className="flex w-full min-w-0">
+          {!isVideoRoom && !isWatchPage && <Sidebar />}
+          <main className="flex-1 w-full min-w-0">
+            <Component {...pageProps} />
+          </main>
         </div>
       </div>
     </UserProvider>
