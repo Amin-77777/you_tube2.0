@@ -24,13 +24,11 @@ export default function ActionFeedback({ type, onClear }: ActionFeedbackProps) {
     }
   }, [type, onClear]);
 
-  if (!visible || !type) return null;
+  if (!visible || !type || type === "play" || type === "pause") return null;
 
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-25">
       <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 shadow-2xl animate-in zoom-in-50 fade-out-0 duration-500">
-        {type === "play" && <Play className="w-8 h-8 fill-current ml-1" />}
-        {type === "pause" && <Pause className="w-8 h-8 fill-current" />}
         {type === "seek-back" && (
           <div className="flex flex-col items-center">
             <RotateCcw className="w-6 h-6" />

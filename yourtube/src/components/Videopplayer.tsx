@@ -557,7 +557,6 @@ export default function VideoPlayer({
         .play()
         .then(() => {
           setIsPlaying(true);
-          setFeedbackType("play");
           if (videoRef.current) {
             videoPlaybackManager.notifyPlay(videoRef.current);
           }
@@ -566,7 +565,6 @@ export default function VideoPlayer({
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
-      setFeedbackType("pause");
       saveProgress(videoRef.current.currentTime);
     }
     resetInactivityTimer();
