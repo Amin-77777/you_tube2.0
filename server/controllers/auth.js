@@ -24,20 +24,20 @@ import { getEffectiveTheme, getISTTimeParts } from "../services/themeService.js"
  * Evaluates risk and requires OTP verification for unrecognized environments or new accounts.
  */
 export const login = async (req, res) => {
-  const { email, name, image, deviceId, deviceName } = req.body;
-  const rawDeviceToken =
-    req.headers["x-device-token"] || req.body?.deviceToken;
-
-  if (!email || typeof email !== "string" || !email.includes("@")) {
-    return res.status(400).json({ message: "A valid email address is required" });
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const ip = getClientIp(req);
-  const ipClassification = classifyIp(ip);
-  const ua = parseUserAgent(req.headers["user-agent"]);
-
   try {
+    const { email, name, image, deviceId, deviceName } = req.body || {};
+    const rawDeviceToken =
+      req.headers["x-device-token"] || req.body?.deviceToken;
+
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ message: "A valid email address is required" });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const ip = getClientIp(req);
+    const ipClassification = classifyIp(ip);
+    const ua = parseUserAgent(req.headers["user-agent"]);
+
     const location = await resolveLocation(ip);
 
     let existingUser = await users.findOne({ email: normalizedEmail });
@@ -188,16 +188,15 @@ export const login = async (req, res) => {
  * Verifies submitted OTP against a pending challenge.
  */
 export const verifyOtp = async (req, res) => {
-  const { challengeId, otp, trustDevice, deviceName } = req.body;
-
-  if (!challengeId || !otp) {
-    return res.status(400).json({ message: "Challenge ID and verification code are required" });
-  }
-
-  const ip = getClientIp(req);
-  const ua = parseUserAgent(req.headers["user-agent"]);
-
   try {
+    const { challengeId, otp, trustDevice, deviceName } = req.body || {};
+
+    if (!challengeId || !otp) {
+      return res.status(400).json({ message: "Challenge ID and verification code are required" });
+    }
+
+    const ip = getClientIp(req);
+    const ua = parseUserAgent(req.headers["user-agent"]);
     const verification = await verifyOtpChallenge(challengeId, otp);
     if (!verification.valid) {
       const challenge = await OtpChallenge.findOne({ challengeId });
@@ -300,12 +299,11 @@ export const verifyOtp = async (req, res) => {
  * Resends OTP for a pending challenge.
  */
 export const resendOtp = async (req, res) => {
-  const { challengeId, channel } = req.body;
-  if (!challengeId) {
-    return res.status(400).json({ message: "Challenge ID is required" });
-  }
-
   try {
+    const { challengeId, channel } = req.body || {};
+    if (!challengeId) {
+      return res.status(400).json({ message: "Challenge ID is required" });
+    }
     const result = await resendChallengeOtp(challengeId, channel);
     if (!result.success) {
       return res.status(429).json({ message: result.message, cooldown: result.cooldown });
@@ -321,12 +319,11 @@ export const resendOtp = async (req, res) => {
  * Cancels a pending OTP verification challenge.
  */
 export const cancelOtp = async (req, res) => {
-  const { challengeId } = req.body;
-  if (!challengeId) {
-    return res.status(400).json({ message: "Challenge ID is required" });
-  }
-
   try {
+    const { challengeId } = req.body || {};
+    if (!challengeId) {
+      return res.status(400).json({ message: "Challenge ID is required" });
+    }
     const challenge = await OtpChallenge.findOneAndUpdate(
       { challengeId, status: "PENDING" },
       { $set: { status: "CANCELLED" } },

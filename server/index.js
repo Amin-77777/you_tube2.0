@@ -42,7 +42,7 @@ if (!fs.existsSync(serverUploadsDir)) {
 }
 
 app.use(cors());
-app.use(express.json({ limit: "30mb", extended: true }));
+app.use(express.json({ limit: "30mb" }));
 app.use(express.urlencoded({ limit: "30mb", extended: true }));
 
 const MIME_MAP = {
@@ -264,7 +264,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use(bodyParser.json());
 app.use("/user", userroutes);
 app.use("/api/auth", userroutes);
 app.use("/api/user", userroutes);
@@ -282,6 +281,17 @@ app.use("/history", historyrroutes);
 app.use("/comment", commentroutes);
 app.use("/download", downloadroutes);
 app.use("/subscription", subscriptionroutes);
+
+// Global JSON error handling middleware
+app.use((err, req, res, next) => {
+  console.error("[Server Error]:", err.message || err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(err.status || 500).json({
+    message: err.message || "An unexpected server error occurred",
+  });
+});
 const PORT = process.env.PORT || 5000;
 
 
