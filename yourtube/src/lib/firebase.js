@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCLUXZaNo8JmAEmrwdxmoLlcCsAL84OIdk",
+  apiKey: "AIzaSyClUXZaNo8JmAEmrwdxmoLlcCsAL840Idk",
   authDomain: "yourtube-59b5e.firebaseapp.com",
   projectId: "yourtube-59b5e",
   storageBucket: "yourtube-59b5e.firebasestorage.app",
