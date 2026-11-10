@@ -38,30 +38,30 @@ export function getClientIp(req) {
   if (!req) return "127.0.0.1";
 
   // Check X-Forwarded-For header (first address is the original client)
-  const xForwardedFor = req.headers["x-forwarded-for"];
+  const xForwardedFor = req.headers?.["x-forwarded-for"];
   if (xForwardedFor) {
-    const list = Array.isArray(xForwardedFor)
-      ? xForwardedFor[0]
-      : xForwardedFor.split(",");
-    const clientIp = list.split(",")[0].trim();
+    const rawHeader = Array.isArray(xForwardedFor)
+      ? xForwardedFor.join(",")
+      : String(xForwardedFor);
+    const clientIp = rawHeader.split(",")[0].trim();
     if (clientIp) {
       return clientIp.replace(/^::ffff:/, "");
     }
   }
 
   // Check standard proxy headers
-  const cfConnectingIp = req.headers["cf-connecting-ip"];
+  const cfConnectingIp = req.headers?.["cf-connecting-ip"];
   if (cfConnectingIp) {
     return String(cfConnectingIp).trim().replace(/^::ffff:/, "");
   }
 
-  const xRealIp = req.headers["x-real-ip"];
+  const xRealIp = req.headers?.["x-real-ip"];
   if (xRealIp) {
     return String(xRealIp).trim().replace(/^::ffff:/, "");
   }
 
   const rawIp = req.ip || req.socket?.remoteAddress || "127.0.0.1";
-  return rawIp.replace(/^::ffff:/, "");
+  return String(rawIp).replace(/^::ffff:/, "");
 }
 
 /**
