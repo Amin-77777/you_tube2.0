@@ -11,6 +11,7 @@ import historyrroutes from "./routes/history.js";
 import commentroutes from "./routes/comment.js";
 import downloadroutes from "./routes/download.js";
 import subscriptionroutes from "./routes/subscription.js";
+import securityroutes from "./routes/security.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { setupSocketIO } from "./socketHandler.js";
@@ -33,6 +34,7 @@ dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
+app.set("trust proxy", 1);
 
 const serverUploadsDir = path.resolve(__dirname, "uploads");
 if (!fs.existsSync(serverUploadsDir)) {
@@ -264,6 +266,11 @@ app.get("/health", (req, res) => {
 
 app.use(bodyParser.json());
 app.use("/user", userroutes);
+app.use("/api/auth", userroutes);
+app.use("/api/user", userroutes);
+app.use("/security", securityroutes);
+app.use("/api/security", securityroutes);
+
 app.use((req, res, next) => {
   console.log(req.method, req.url);
   next();

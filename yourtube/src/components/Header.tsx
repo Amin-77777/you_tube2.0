@@ -17,6 +17,10 @@ import {
   History,
   Home,
   LogOut,
+  Shield,
+  Sun,
+  Moon,
+  Sparkles,
 } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
@@ -35,9 +39,11 @@ import UploadVideoModal from "./UploadVideoModal";
 import NotificationBell from "./NotificationBell";
 import { useRouter } from "next/router";
 import { useUser } from "@/lib/AuthContext";
+import { useTheme } from "@/lib/ThemeContext";
 
 const Header = () => {
   const { user, logout } = useUser();
+  const { themePreference, effectiveTheme, setThemePreference, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [isdialogeopen, setisdialogeopen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -61,7 +67,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex items-center justify-between h-14 px-2 sm:px-4 bg-white border-b shadow-xs">
+      <header className="sticky top-0 z-40 flex items-center justify-between h-14 px-2 sm:px-4 bg-card border-b border-border shadow-xs">
         {isMobileSearchOpen ? (
           <form onSubmit={handleSearch} className="flex items-center gap-2 w-full">
             <Button
@@ -192,6 +198,22 @@ const Header = () => {
                 <span>Upload</span>
               </Button>
 
+              {/* Theme Toggle Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="rounded-full text-foreground hover:bg-muted"
+                title={`Theme preference: ${themePreference} (Active: ${effectiveTheme})`}
+                aria-label="Toggle theme"
+              >
+                {effectiveTheme === "dark" ? (
+                  <Moon className="w-5 h-5 text-purple-400" />
+                ) : (
+                  <Sun className="w-5 h-5 text-amber-500" />
+                )}
+              </Button>
+
               {user ? (
                 <>
                   <Link href="/video-call" title="Video Call" className="hidden sm:inline-flex">
@@ -257,6 +279,12 @@ const Header = () => {
                           Subscription & Invoices
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/security" className="flex items-center gap-2 font-medium">
+                          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          Account Security & Theme
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout}>Sign out</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -290,9 +318,9 @@ const Header = () => {
           />
 
           {/* Drawer Menu Panel */}
-          <div className="relative w-72 max-w-[80vw] bg-white h-full z-10 shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
+          <div className="relative w-72 max-w-[80vw] bg-card text-foreground h-full z-10 shadow-2xl flex flex-col border-r border-border animate-in slide-in-from-left duration-200">
             {/* Drawer Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -300,7 +328,7 @@ const Header = () => {
                 className="rounded-full"
                 aria-label="Close menu"
               >
-                <X className="w-6 h-6 text-gray-700" />
+                <X className="w-6 h-6 text-foreground" />
               </Button>
               <Link
                 href="/"
@@ -321,23 +349,23 @@ const Header = () => {
               <Link
                 href="/"
                 onClick={() => setIsMobileDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
-                <Home className="w-5 h-5 text-gray-700" />
+                <Home className="w-5 h-5 text-foreground" />
                 <span>Home</span>
               </Link>
               <Link
                 href="/subscriptions"
                 onClick={() => setIsMobileDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
-                <PlaySquare className="w-5 h-5 text-gray-700" />
+                <PlaySquare className="w-5 h-5 text-foreground" />
                 <span>Subscriptions</span>
               </Link>
               <Link
                 href="/downloads"
                 onClick={() => setIsMobileDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
               >
                 <Download className="w-5 h-5 text-red-600" />
                 <span>Downloads</span>
@@ -345,43 +373,70 @@ const Header = () => {
               <Link
                 href="/video-call"
                 onClick={() => setIsMobileDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
-                <VideoIcon className="w-5 h-5 text-gray-700" />
+                <VideoIcon className="w-5 h-5 text-foreground" />
                 <span>Video Call</span>
               </Link>
 
-              <div className="border-t my-2 pt-2">
+              {/* Theme Switcher Row in Drawer */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  {effectiveTheme === "dark" ? (
+                    <Moon className="w-5 h-5 text-purple-400" />
+                  ) : (
+                    <Sun className="w-5 h-5 text-amber-500" />
+                  )}
+                  <span>Theme: {themePreference}</span>
+                </div>
+                <span className="text-xs uppercase font-bold text-red-600 dark:text-red-400">
+                  {effectiveTheme}
+                </span>
+              </button>
+
+              <div className="border-t border-border my-2 pt-2">
                 {user ? (
                   <>
                     <Link
+                      href="/security"
+                      onClick={() => setIsMobileDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <span>Security & Theme</span>
+                    </Link>
+                    <Link
                       href="/history"
                       onClick={() => setIsMobileDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                     >
-                      <History className="w-5 h-5 text-gray-700" />
+                      <History className="w-5 h-5 text-foreground" />
                       <span>History</span>
                     </Link>
                     <Link
                       href="/liked"
                       onClick={() => setIsMobileDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                     >
-                      <ThumbsUp className="w-5 h-5 text-gray-700" />
+                      <ThumbsUp className="w-5 h-5 text-foreground" />
                       <span>Liked videos</span>
                     </Link>
                     <Link
                       href="/watch-later"
                       onClick={() => setIsMobileDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                     >
-                      <Clock className="w-5 h-5 text-gray-700" />
+                      <Clock className="w-5 h-5 text-foreground" />
                       <span>Watch later</span>
                     </Link>
                     <Link
                       href="/subscription/dashboard"
                       onClick={() => setIsMobileDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors"
                     >
                       <CreditCard className="w-5 h-5 text-emerald-600" />
                       <span>My Subscription</span>

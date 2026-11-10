@@ -16,7 +16,7 @@ export function getOrCreateDeviceId() {
   return deviceId;
 }
 
-// Request interceptor to attach JWT token, user ID, and device ID
+// Request interceptor to attach JWT token, user ID, device ID, and device token
 axiosInstance.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
@@ -36,6 +36,11 @@ axiosInstance.interceptors.request.use((config) => {
     } catch (_) {}
 
     config.headers["x-device-id"] = getOrCreateDeviceId();
+
+    const deviceToken = localStorage.getItem("yt_device_token");
+    if (deviceToken) {
+      config.headers["x-device-token"] = deviceToken;
+    }
   }
   return config;
 });

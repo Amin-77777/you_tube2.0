@@ -26,13 +26,13 @@ export default function MobileBottomNav() {
     <>
       <nav
         aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 py-1 px-2 flex items-center justify-around shadow-lg select-none"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border py-1 px-2 flex items-center justify-around shadow-lg select-none transition-colors"
       >
         {/* Home */}
         <Link
           href="/"
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-colors ${
-            currentPath === "/" ? "text-red-600 font-bold" : "text-gray-600 hover:text-black"
+            currentPath === "/" ? "text-red-600 font-bold" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Home className="w-5 h-5 mb-0.5" />
@@ -45,7 +45,7 @@ export default function MobileBottomNav() {
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-colors ${
             currentPath.startsWith("/subscriptions") || currentPath.startsWith("/subscription")
               ? "text-red-600 font-bold"
-              : "text-gray-600 hover:text-black"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <PlaySquare className="w-5 h-5 mb-0.5" />
@@ -56,7 +56,7 @@ export default function MobileBottomNav() {
         <button
           type="button"
           onClick={() => setIsUploadOpen(true)}
-          className="flex flex-col items-center justify-center py-0.5 px-3 text-red-600 active:scale-95 transition-transform"
+          className="flex flex-col items-center justify-center py-0.5 px-3 text-red-600 active:scale-95 transition-transform cursor-pointer"
           aria-label="Upload video"
           title="Upload video"
         >
@@ -67,7 +67,7 @@ export default function MobileBottomNav() {
         <Link
           href="/downloads"
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-colors ${
-            currentPath.startsWith("/downloads") ? "text-red-600 font-bold" : "text-gray-600 hover:text-black"
+            currentPath.startsWith("/downloads") ? "text-red-600 font-bold" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Download className="w-5 h-5 mb-0.5" />
@@ -80,7 +80,7 @@ export default function MobileBottomNav() {
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-colors ${
             currentPath.startsWith("/history") || currentPath.startsWith("/liked") || currentPath.startsWith("/watch-later")
               ? "text-red-600 font-bold"
-              : "text-gray-600 hover:text-black"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           {user ? <Clock className="w-5 h-5 mb-0.5" /> : <User className="w-5 h-5 mb-0.5" />}

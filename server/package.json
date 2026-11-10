@@ -8,7 +8,7 @@
     "dev": "nodemon index.js",
     "seed": "node seed.js",
     "upload-video": "node upload-video-cli.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/**/*.test.js"
   },
   "keywords": [],
   "author": "",

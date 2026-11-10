@@ -9,6 +9,7 @@ import {
   Video,
   Download,
   CreditCard,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -21,7 +22,7 @@ const Sidebar = () => {
 
   const [isdialogeopen, setisdialogeopen] = useState(false);
   return (
-    <aside className="w-64 bg-white border-r min-h-screen p-2 hidden md:block shrink-0">
+    <aside className="w-64 bg-card text-foreground border-r border-border min-h-screen p-2 hidden md:block shrink-0 transition-colors">
       <nav className="space-y-1">
         <Link href="/">
           <Button variant="ghost" className="w-full justify-start">
@@ -42,13 +43,13 @@ const Sidebar = () => {
           </Button>
         </Link>
         <Link href="/downloads">
-          <Button variant="ghost" className="w-full justify-start text-red-600 font-semibold hover:bg-red-50 hover:text-red-700">
+          <Button variant="ghost" className="w-full justify-start text-red-600 font-semibold hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700">
             <Download className="w-5 h-5 mr-3 text-red-600" />
             Downloads
           </Button>
         </Link>
         <Link href="/video-call">
-          <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50">
+          <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40">
             <Video className="w-5 h-5 mr-3" />
             Video Call
           </Button>
@@ -56,7 +57,7 @@ const Sidebar = () => {
 
         {user && (
           <>
-            <div className="border-t pt-2 mt-2">
+            <div className="border-t border-border pt-2 mt-2">
               <Link href="/history">
                 <Button variant="ghost" className="w-full justify-start">
                   <History className="w-5 h-5 mr-3" />
@@ -75,20 +76,20 @@ const Sidebar = () => {
                   Watch later
                 </Button>
               </Link>
-              <Link href="/downloads">
-                <Button variant="ghost" className="w-full justify-start text-red-600 font-medium hover:bg-red-50 hover:text-red-700">
-                  <Download className="w-5 h-5 mr-3" />
-                  Downloads
-                </Button>
-              </Link>
               <Link href="/subscription/dashboard">
-                <Button variant="ghost" className="w-full justify-start text-emerald-700 font-medium hover:bg-emerald-50">
+                <Button variant="ghost" className="w-full justify-start text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-emerald-950/40">
                   <CreditCard className="w-5 h-5 mr-3 text-emerald-600" />
                   My Subscription
                 </Button>
               </Link>
+              <Link href="/security">
+                <Button variant="ghost" className="w-full justify-start text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-950/40">
+                  <Shield className="w-5 h-5 mr-3 text-blue-600 dark:text-blue-400" />
+                  Security & Theme
+                </Button>
+              </Link>
               {user?.channelname ? (
-                <Link href={`/channel/${user.id}`}>
+                <Link href={`/channel/${user.id || user._id}`}>
                   <Button variant="ghost" className="w-full justify-start">
                     <User className="w-5 h-5 mr-3" />
                     Your channel

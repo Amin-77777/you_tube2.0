@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { UserProvider } from "../lib/AuthContext";
+import { ThemeProvider } from "../lib/ThemeContext";
 import { useRouter } from "next/router";
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -13,20 +14,21 @@ export default function App({ Component, pageProps }: AppProps) {
   const isWatchPage = router.pathname.startsWith("/watch");
 
   return (
-    <UserProvider>
-      <div className="min-h-screen bg-white text-black flex flex-col">
-        <title>Your-Tube Clone</title>
-        {!isVideoRoom && <Header />}
-        <Toaster />
-        <div className="flex w-full min-w-0 flex-1">
-          {!isVideoRoom && !isWatchPage && <Sidebar />}
-          <main className={`flex-1 w-full min-w-0 ${!isVideoRoom && !isWatchPage ? "pb-16 md:pb-0" : ""}`}>
-            <Component {...pageProps} />
-          </main>
+    <ThemeProvider>
+      <UserProvider>
+        <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
+          <title>Your-Tube Clone</title>
+          {!isVideoRoom && <Header />}
+          <Toaster />
+          <div className="flex w-full min-w-0 flex-1">
+            {!isVideoRoom && !isWatchPage && <Sidebar />}
+            <main className={`flex-1 w-full min-w-0 ${!isVideoRoom && !isWatchPage ? "pb-16 md:pb-0" : ""}`}>
+              <Component {...pageProps} />
+            </main>
+          </div>
+          {!isVideoRoom && <MobileBottomNav />}
         </div>
-        {!isVideoRoom && <MobileBottomNav />}
-      </div>
-    </UserProvider>
+      </UserProvider>
+    </ThemeProvider>
   );
 }
-

@@ -18,6 +18,32 @@ services:
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OTP_SECRET
+        generateValue: true
+      - key: OTP_EXPIRY_MINUTES
+        value: 5
+      - key: OTP_MAX_ATTEMPTS
+        value: 5
+      - key: OTP_RESEND_COOLDOWN_SECONDS
+        value: 60
+      - key: TRUSTED_DEVICE_DURATION_DAYS
+        value: 30
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: IP_GEOLOCATION_API_KEY
+        sync: false
+      - key: SMS_PROVIDER_API_KEY
+        sync: false
 
   # Frontend Web Service (Next.js)
   - type: web
