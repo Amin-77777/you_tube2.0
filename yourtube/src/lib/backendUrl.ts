@@ -1,5 +1,9 @@
+/**
+ * Backend URL resolution helper.
+ * Directs browser and server API requests to the production backend on Render,
+ * or localhost:5000 when developing locally.
+ */
 export const getBackendUrl = (): string => {
-  // Client-side (running in the browser)
   if (typeof window !== "undefined") {
     const isLocalhost =
       window.location.hostname === "localhost" ||
@@ -13,39 +17,26 @@ export const getBackendUrl = (): string => {
       return "http://localhost:5000";
     }
 
-    // In production web environment (e.g. on Render)
-    let envUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-    if (envUrl) {
-      if (!envUrl.startsWith("http://") && !envUrl.startsWith("https://")) {
-        envUrl = `https://${envUrl}`;
-      }
-      return envUrl.replace(/\/$/, "");
+    // Explicit environment variable if provided
+    const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (envUrl && envUrl.includes(".")) {
+      const formatted = envUrl.startsWith("http") ? envUrl : `https://${envUrl}`;
+      return formatted.replace(/\/$/, "");
     }
 
-    // Default to the known production Render backend URL
+    // Always fallback to the active production Render backend
     return "https://youtube-backend-dc7c.onrender.com";
   }
 
-  // Server-side (running inside Next.js Node.js server)
-  let url =
+  // Server-side
+  const serverUrl =
     process.env.BACKEND_URL ||
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     "https://youtube-backend-dc7c.onrender.com";
 
-  // Handle Render private service hostname (e.g. 'youtube-backend' -> 'http://youtube-backend:5000')
-  if (
-    url &&
-    !url.includes(".") &&
-    !url.includes("localhost") &&
-    !url.startsWith("http")
-  ) {
-    if (!url.includes(":")) {
-      url = `${url}:5000`;
-    }
-    url = `http://${url}`;
-  } else if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-    url = `https://${url}`;
+  if (serverUrl.startsWith("http")) {
+    return serverUrl.replace(/\/$/, "");
   }
 
-  return url.replace(/\/$/, "");
+  return `https://${serverUrl}`.replace(/\/$/, "");
 };

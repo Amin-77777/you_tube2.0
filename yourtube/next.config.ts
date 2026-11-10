@@ -1,30 +1,17 @@
 import type { NextConfig } from "next";
 
-const getBackendUrl = (): string => {
-  let url =
-    process.env.BACKEND_URL ||
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    "https://youtube-backend-dc7c.onrender.com";
+const BACKEND_URL =
+  process.env.BACKEND_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://youtube-backend-dc7c.onrender.com";
 
-  if (
-    url &&
-    !url.includes(".") &&
-    !url.includes("localhost") &&
-    !url.startsWith("http")
-  ) {
-    if (!url.includes(":")) {
-      url = `${url}:5000`;
-    }
-    url = `http://${url}`;
-  } else if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-    url = `https://${url}`;
-  }
-
-  return url.replace(/\/$/, "");
-};
+const normalizedBackend = (
+  BACKEND_URL.startsWith("http://") || BACKEND_URL.startsWith("https://")
+    ? BACKEND_URL
+    : `https://${BACKEND_URL}`
+).replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: true,
@@ -33,58 +20,50 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   env: {
-    BACKEND_URL: getBackendUrl(),
+    NEXT_PUBLIC_BACKEND_URL: normalizedBackend,
+    BACKEND_URL: normalizedBackend,
   },
   async rewrites() {
-    const backendUrl = getBackendUrl();
     return [
       {
         source: "/user/:path*",
-        destination: `${backendUrl}/user/:path*`,
+        destination: `${normalizedBackend}/user/:path*`,
       },
       {
         source: "/security/:path*",
-        destination: `${backendUrl}/security/:path*`,
+        destination: `${normalizedBackend}/security/:path*`,
       },
       {
         source: "/video/:path*",
-        destination: `${backendUrl}/video/:path*`,
+        destination: `${normalizedBackend}/video/:path*`,
       },
       {
         source: "/like/:path*",
-        destination: `${backendUrl}/like/:path*`,
+        destination: `${normalizedBackend}/like/:path*`,
       },
       {
         source: "/watch/:path*",
-        destination: `${backendUrl}/watch/:path*`,
+        destination: `${normalizedBackend}/watch/:path*`,
       },
       {
         source: "/history/:path*",
-        destination: `${backendUrl}/history/:path*`,
+        destination: `${normalizedBackend}/history/:path*`,
       },
       {
         source: "/comment/:path*",
-        destination: `${backendUrl}/comment/:path*`,
+        destination: `${normalizedBackend}/comment/:path*`,
       },
       {
         source: "/download/:path*",
-        destination: `${backendUrl}/download/:path*`,
+        destination: `${normalizedBackend}/download/:path*`,
       },
       {
         source: "/subscription/:path*",
-        destination: `${backendUrl}/subscription/:path*`,
+        destination: `${normalizedBackend}/subscription/:path*`,
       },
       {
         source: "/uploads/:path*",
-        destination: `${backendUrl}/uploads/:path*`,
-      },
-      {
-        source: "/socket.io/:path*",
-        destination: `${backendUrl}/socket.io/:path*`,
-      },
-      {
-        source: "/api/turn-credentials",
-        destination: `${backendUrl}/api/turn-credentials`,
+        destination: `${normalizedBackend}/uploads/:path*`,
       },
     ];
   },
