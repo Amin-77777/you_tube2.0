@@ -4,7 +4,7 @@ const getBackendUrl = (): string => {
   let url =
     process.env.BACKEND_URL ||
     process.env.NEXT_PUBLIC_BACKEND_URL ||
-    "http://localhost:5000";
+    "https://youtube-backend-dc7c.onrender.com";
 
   if (
     url &&
@@ -15,10 +15,9 @@ const getBackendUrl = (): string => {
     if (!url.includes(":")) {
       url = `${url}:5000`;
     }
-  }
-
-  if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
     url = `http://${url}`;
+  } else if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
   }
 
   return url.replace(/\/$/, "");

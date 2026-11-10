@@ -13,22 +13,24 @@ export const getBackendUrl = (): string => {
       return "http://localhost:5000";
     }
 
-    // If an explicit absolute public URL is provided for production
-    const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    if (envUrl && envUrl.startsWith("https://") && envUrl.includes(".")) {
+    // In production web environment (e.g. on Render)
+    let envUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+    if (envUrl) {
+      if (!envUrl.startsWith("http://") && !envUrl.startsWith("https://")) {
+        envUrl = `https://${envUrl}`;
+      }
       return envUrl.replace(/\/$/, "");
     }
 
-    // In production web environment (e.g. on Render), use same-origin relative URLs.
-    // Next.js rewrites proxy all /user, /security, /video, etc. routes directly to the backend.
-    return "";
+    // Default to the known production Render backend URL
+    return "https://youtube-backend-dc7c.onrender.com";
   }
 
   // Server-side (running inside Next.js Node.js server)
   let url =
     process.env.BACKEND_URL ||
     process.env.NEXT_PUBLIC_BACKEND_URL ||
-    "http://localhost:5000";
+    "https://youtube-backend-dc7c.onrender.com";
 
   // Handle Render private service hostname (e.g. 'youtube-backend' -> 'http://youtube-backend:5000')
   if (
@@ -40,10 +42,9 @@ export const getBackendUrl = (): string => {
     if (!url.includes(":")) {
       url = `${url}:5000`;
     }
-  }
-
-  if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
     url = `http://${url}`;
+  } else if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
   }
 
   return url.replace(/\/$/, "");
