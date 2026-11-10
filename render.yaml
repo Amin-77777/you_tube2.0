@@ -56,6 +56,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: youtube-backend
+          property: host
       - key: NEXT_PUBLIC_BACKEND_URL
         fromService:
           type: web

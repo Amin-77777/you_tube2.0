@@ -225,12 +225,16 @@ export async function createOtpChallenge({
   const maskedDestination =
     channel === "sms" && phone ? maskPhone(phone) : maskEmail(email);
 
+  const isDevOrNoSmtp =
+    process.env.NODE_ENV !== "production" || !process.env.SMTP_HOST;
+
   return {
     challengeId: challenge.challengeId,
     expiresAt,
     resendCooldown: OTP_RESEND_COOLDOWN_SECONDS,
     maskedDestination,
     channel,
+    devOtp: isDevOrNoSmtp ? otp : undefined,
   };
 }
 
@@ -343,9 +347,13 @@ export async function resendChallengeOtp(challengeId, newChannel = null) {
     await sendOtpEmail(challenge.email, newOtp, challenge.deviceMetadata?.userName || "User");
   }
 
+  const isDevOrNoSmtp =
+    process.env.NODE_ENV !== "production" || !process.env.SMTP_HOST;
+
   return {
     success: true,
     message: "New verification code has been dispatched.",
     cooldown: OTP_RESEND_COOLDOWN_SECONDS,
+    devOtp: isDevOrNoSmtp ? newOtp : undefined,
   };
 }

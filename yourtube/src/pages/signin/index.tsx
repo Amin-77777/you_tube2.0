@@ -94,15 +94,29 @@ export default function SignInPage() {
       setLoading(true);
       const res = await handlegooglesignin();
       if (res?.otpRequired) {
-        toast.info("Verification code sent to your registered email");
+        if (res.devOtp) {
+          toast.info(`Security code: ${res.devOtp}`);
+        } else {
+          toast.info(`Verification code sent to ${res.maskedDestination || "your registered email"}`);
+        }
         return;
       }
       toast.success("Signed in successfully with Google!");
       const target = typeof redirect === "string" ? redirect : "/";
       router.push(target);
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to sign in with Google.");
+      console.error("Google sign-in error:", err);
+      let msg = err.message || "Failed to sign in with Google.";
+      if (err.code === "auth/unauthorized-domain") {
+        msg = "Domain not authorized in Firebase Console. Please use the Email sign-in option below!";
+      } else if (err.code === "auth/popup-blocked") {
+        msg = "Browser popup was blocked. Please allow popups or use Email sign-in below.";
+      } else if (err.code === "auth/popup-closed-by-user") {
+        msg = "Google sign-in popup was closed.";
+      } else if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -120,14 +134,23 @@ export default function SignInPage() {
       setLoading(true);
       const res = await loginWithEmail(email, name);
       if (res?.otpRequired) {
-        toast.info("Verification required: 6-digit security code sent to your email.");
+        if (res.devOtp) {
+          toast.info(`Security code: ${res.devOtp}`);
+        } else {
+          toast.info(`Verification code sent to ${res.maskedDestination || "your email"}.`);
+        }
         return;
       }
       toast.success(`Welcome to YourTube, ${name || email.split("@")[0]}!`);
       const target = typeof redirect === "string" ? redirect : "/";
       router.push(target);
     } catch (err: any) {
-      toast.error("Sign-in failed. Please check your connection.");
+      console.error("Email login error:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        "Sign-in failed. Please verify connection.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -139,14 +162,20 @@ export default function SignInPage() {
       setLoading(true);
       const res = await loginWithEmail(demoEmail, demoName);
       if (res?.otpRequired) {
-        toast.info("Security code sent. Please verify below.");
+        if (res.devOtp) {
+          toast.info(`Test code for ${demoName}: ${res.devOtp}`);
+        } else {
+          toast.info("Security code sent. Please verify below.");
+        }
         return;
       }
       toast.success(`Logged in as ${demoName}!`);
       const target = typeof redirect === "string" ? redirect : "/";
       router.push(target);
     } catch (err: any) {
-      toast.error("Demo login failed.");
+      console.error("Demo login error:", err);
+      const msg = err.response?.data?.message || err.message || "Demo login failed.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -271,6 +300,22 @@ export default function SignInPage() {
               <div className="inline-block bg-muted px-3 py-1 rounded-full text-xs font-semibold text-foreground tracking-wide border border-border">
                 {pendingOtpChallenge.maskedDestination}
               </div>
+
+              {pendingOtpChallenge.devOtp && (
+                <div
+                  onClick={() => {
+                    const chars = String(pendingOtpChallenge.devOtp).split("").slice(0, 6);
+                    setOtpDigits(chars);
+                    inputRefs.current[5]?.focus();
+                  }}
+                  className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 p-2.5 rounded-2xl text-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors mt-2"
+                >
+                  <span className="text-[11px] text-amber-800 dark:text-amber-300 block font-medium">
+                    Test Mode Code: <strong className="font-mono text-xs font-bold">{pendingOtpChallenge.devOtp}</strong>
+                    <span className="ml-1.5 text-[10px] underline font-semibold">(Click to auto-fill)</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleVerifySubmit} className="space-y-5">

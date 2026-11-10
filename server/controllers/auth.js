@@ -116,6 +116,7 @@ export const login = async (req, res) => {
         maskedDestination: challenge.maskedDestination,
         resendCooldown: challenge.resendCooldown,
         expiresAt: challenge.expiresAt,
+        devOtp: challenge.devOtp,
         message:
           "Additional verification required. We've sent a 6-digit code to your email.",
       });
