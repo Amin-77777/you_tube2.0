@@ -107,8 +107,16 @@ export default function SignInPage() {
     } catch (err: any) {
       console.error("Google sign-in error:", err);
       let msg = err.message || "Failed to sign in with Google.";
-      if (err.code === "auth/unauthorized-domain" || err.code === "auth/configuration-not-found" || err.code === "auth/invalid-api-key") {
-        msg = "Firebase Google Auth is not configured for this project. Please sign in using your email address below!";
+      const errCode = (err.code || "").toLowerCase();
+      if (
+        errCode.includes("api-key") ||
+        errCode.includes("unauthorized-domain") ||
+        errCode.includes("configuration-not-found") ||
+        errCode.includes("project-not-found") ||
+        errCode.includes("app-not-authorized")
+      ) {
+        msg =
+          "Google Sign-In is pending activation in Firebase Console. Please use the Email Sign-In below to sign in instantly!";
         setTimeout(() => document.querySelector<HTMLInputElement>('input[type="email"]')?.focus(), 200);
       } else if (err.code === "auth/popup-blocked") {
         msg = "Browser popup was blocked. Please allow popups or use Email sign-in below.";

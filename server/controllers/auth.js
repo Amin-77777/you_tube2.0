@@ -180,7 +180,11 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    return res.status(500).json({ message: "Authentication service error. Please try again." });
+    return res.status(500).json({
+      message: "Authentication service error. Please try again.",
+      error: error.message,
+      stack: error.stack,
+    });
   }
 };
 

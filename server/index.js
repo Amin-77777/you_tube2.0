@@ -260,6 +260,14 @@ app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    dbName: mongoose.connection?.db?.databaseName,
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      HAS_DB_URL: !!process.env.DB_URL,
+      HAS_JWT_SECRET: !!process.env.JWT_SECRET,
+      HAS_OTP_SECRET: !!process.env.OTP_SECRET,
+      HAS_SMTP: !!process.env.SMTP_HOST,
+    },
     timestamp: new Date().toISOString(),
   });
 });
