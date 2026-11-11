@@ -10,6 +10,8 @@ import {
   logoutAll,
   updateprofile,
   getChannelProfile,
+  toggleChannelSubscription,
+  getChannelSubscriptions,
 } from "../controllers/auth.js";
 import {
   getUserPreferences,
@@ -40,5 +42,8 @@ routes.get("/profile/:id", getChannelProfile);
 routes.patch("/update/:id", updateprofile);
 routes.put("/update/:id", updateprofile);
 routes.post("/update/:id", updateprofile);
+
+routes.post("/subscribe/:channelId", toggleChannelSubscription);
+routes.get("/subscriptions/channels", getChannelSubscriptions);
 
 export default routes;

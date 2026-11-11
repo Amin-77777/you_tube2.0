@@ -512,3 +512,76 @@ export const updateprofile = async (req, res) => {
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
+
+/**
+ * Toggles channel subscription status for a user.
+ */
+export const toggleChannelSubscription = async (req, res) => {
+  const { channelId } = req.params;
+  const userId = req.body?.userId || req.user?.id || req.user?._id;
+
+  try {
+    if (!channelId) {
+      return res.status(400).json({ message: "Channel ID required" });
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      // Guest fallback: acknowledge subscription
+      return res.status(200).json({
+        success: true,
+        channelId,
+        isSubscribed: Boolean(req.body?.isSubscribed),
+        message: "Subscription updated (guest session)",
+      });
+    }
+
+    const userDoc = await users.findById(userId);
+    if (!userDoc) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const subscribedList = userDoc.subscribedChannels || [];
+    const index = subscribedList.indexOf(channelId);
+
+    let isSubscribed = false;
+    if (index > -1) {
+      subscribedList.splice(index, 1);
+      isSubscribed = false;
+    } else {
+      subscribedList.push(channelId);
+      isSubscribed = true;
+    }
+
+    userDoc.subscribedChannels = subscribedList;
+    await userDoc.save();
+
+    return res.status(200).json({
+      success: true,
+      channelId,
+      isSubscribed,
+      subscribedChannels: subscribedList,
+    });
+  } catch (error) {
+    console.error("Error toggling channel subscription:", error);
+    return res.status(500).json({ message: "Failed to update channel subscription" });
+  }
+};
+
+/**
+ * Retrieves list of channels a user is subscribed to.
+ */
+export const getChannelSubscriptions = async (req, res) => {
+  const userId = req.query?.userId || req.user?.id || req.user?._id;
+  try {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(200).json({ subscriptions: [] });
+    }
+    const userDoc = await users.findById(userId);
+    return res.status(200).json({
+      subscriptions: userDoc?.subscribedChannels || [],
+    });
+  } catch (error) {
+    console.error("Error fetching channel subscriptions:", error);
+    return res.status(500).json({ message: "Error fetching subscriptions" });
+  }
+};

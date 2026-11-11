@@ -13,6 +13,7 @@ const userschema = mongoose.Schema({
     twitter: { type: String, default: "" },
     instagram: { type: String, default: "" },
   },
+  subscribedChannels: { type: [String], default: [] },
   role: { type: String, enum: ["user", "admin", "moderator"], default: "user" },
   preferredLanguage: { type: String, default: "en" },
   showLocationInComments: { type: Boolean, default: true },

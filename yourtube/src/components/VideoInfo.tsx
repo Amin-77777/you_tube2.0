@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import {
@@ -9,6 +10,8 @@ import {
   ThumbsDown,
   ThumbsUp,
   Image as ImageIcon,
+  Bell,
+  Check,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/router";
@@ -17,6 +20,7 @@ import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
 import { getBackendUrl } from "@/lib/backendUrl";
 import EditThumbnailModal from "./EditThumbnailModal";
+import { useChannelSubscription } from "@/lib/subscriptionUtils";
 
 const VideoInfo = ({ video, onVideoUpdate }: any) => {
   const [currentVideo, setCurrentVideo] = useState(video);
@@ -30,6 +34,17 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
   const [downloading, setDownloading] = useState(false);
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const channelIdentifier =
+    video?.channelId ||
+    (video?.uploader && video.uploader.length === 24
+      ? video.uploader
+      : video?.videochanel || video?.uploader || "channel");
+
+  const channelDisplayName = video?.videochanel || "Community Channel";
+
+  const { isSubscribed, toggleSubscription, isLoading: isSubLoading } =
+    useChannelSubscription(channelIdentifier, channelDisplayName, user?._id || user?.id);
 
   useEffect(() => {
     setCurrentVideo(video);
@@ -219,17 +234,44 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-border">
         {/* Channel info & Subscribe */}
         <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-3 min-w-0">
-            <Avatar className="w-10 h-10 shrink-0">
-              <AvatarFallback>{video.videochanel?.[0] || "C"}</AvatarFallback>
+          <Link
+            href={`/channel/${encodeURIComponent(channelIdentifier)}`}
+            className="flex items-center gap-3 min-w-0 group cursor-pointer"
+            title={`View ${channelDisplayName} channel`}
+          >
+            <Avatar className="w-10 h-10 shrink-0 border border-border group-hover:ring-2 group-hover:ring-red-600 transition-all">
+              <AvatarFallback className="font-bold bg-muted text-foreground">
+                {video.videochanel?.[0]?.toUpperCase() || "C"}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <h3 className="font-semibold text-sm sm:text-base text-foreground truncate">{video.videochanel}</h3>
-              <p className="text-xs text-muted-foreground">1.2M subscribers</p>
+              <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-red-600 dark:group-hover:text-red-400 truncate transition-colors">
+                {video.videochanel}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {isSubscribed ? "1.2M+ subscribers" : "1.2M subscribers"}
+              </p>
             </div>
-          </div>
-          <Button className="shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 text-xs sm:text-sm px-4 py-1.5 h-9 font-medium shadow-xs">
-            Subscribe
+          </Link>
+          <Button
+            type="button"
+            onClick={toggleSubscription}
+            disabled={isSubLoading}
+            className={`shrink-0 rounded-full text-xs sm:text-sm px-4 py-1.5 h-9 font-bold shadow-xs transition-all flex items-center gap-1.5 ${
+              isSubscribed
+                ? "bg-muted text-foreground border border-border hover:bg-muted/80"
+                : "bg-red-600 hover:bg-red-700 text-white shadow-sm"
+            }`}
+            aria-label={isSubscribed ? "Subscribed to channel" : "Subscribe to channel"}
+          >
+            {isSubscribed ? (
+              <>
+                <Bell className="w-3.5 h-3.5 fill-current text-red-600 dark:text-red-400" />
+                <span>Subscribed</span>
+              </>
+            ) : (
+              <span>Subscribe</span>
+            )}
           </Button>
         </div>
 

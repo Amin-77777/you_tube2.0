@@ -17,11 +17,15 @@ const ChannelPage = () => {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const rawId = typeof id === "string" ? decodeURIComponent(id).trim() : "";
+
   const isOwner =
     user &&
-    (user._id === id ||
-      user.id === id ||
-      (user.channelname && channelData?.channelname === user.channelname));
+    (user._id === rawId ||
+      user.id === rawId ||
+      (user.channelname &&
+        channelData?.channelname &&
+        user.channelname.toLowerCase() === channelData.channelname.toLowerCase()));
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -30,43 +34,50 @@ const ChannelPage = () => {
       try {
         setLoading(true);
 
-        // If visiting own channel, start with user data
-        if (user && (user._id === id || user.id === id)) {
-          setChannelData(user);
+        let activeChan: any = null;
+        // If visiting own channel by ID or channel name
+        if (
+          user &&
+          (user._id === rawId ||
+            user.id === rawId ||
+            (user.channelname && user.channelname.toLowerCase() === rawId.toLowerCase()))
+        ) {
+          activeChan = user;
         } else {
           try {
-            const channelRes = await axiosInstance.get(`/user/channel/${id}`);
+            const channelRes = await axiosInstance.get(`/user/channel/${encodeURIComponent(rawId)}`);
             if (channelRes.data) {
-              setChannelData(channelRes.data);
+              activeChan = channelRes.data;
             }
           } catch (_) {
-            // Fallback channel info
-            setChannelData({
-              _id: id,
-              channelname: typeof id === "string" ? id : "Creator Channel",
+            activeChan = {
+              _id: rawId,
+              channelname: rawId || "Creator Channel",
               description: "Welcome to my official channel on YourTube!",
-              image: `https://api.dicebear.com/7.x/initials/svg?seed=${id || "Creator"}`,
-            });
+              image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(rawId || "Creator")}`,
+            };
           }
         }
+        setChannelData(activeChan);
 
         // Fetch videos for this channel
         try {
           const vRes = await axiosInstance.get("/video/getall");
           if (Array.isArray(vRes.data)) {
-            const currentName = user?.channelname?.toLowerCase();
-            const channelTargetName = channelData?.channelname?.toLowerCase();
+            const targetName = (activeChan?.channelname || rawId).toLowerCase();
+            const targetId = (activeChan?._id || rawId).toLowerCase();
+
             const matched = vRes.data.filter((v: any) => {
               const uploader = (v.uploader || "").toLowerCase();
               const channelName = (v.videochanel || "").toLowerCase();
               return (
-                uploader === id ||
-                channelName === currentName ||
-                channelName === channelTargetName ||
-                uploader === "admin"
+                uploader === targetId ||
+                uploader === rawId.toLowerCase() ||
+                channelName === targetName
               );
             });
-            setVideos(matched.length > 0 ? matched : vRes.data.slice(0, 4));
+            // If uploader matched, show them; otherwise show popular catalog
+            setVideos(matched.length > 0 ? matched : vRes.data.slice(0, 8));
           }
         } catch (err) {
           console.warn("Could not fetch channel videos:", err);
@@ -77,7 +88,7 @@ const ChannelPage = () => {
     };
 
     fetchChannelAndVideos();
-  }, [router.isReady, id, user]);
+  }, [router.isReady, rawId, user]);
 
   const activeChannel = isOwner ? user || channelData : channelData;
 
@@ -100,7 +111,7 @@ const ChannelPage = () => {
 
         {isOwner && (
           <div className="px-4 py-2">
-            <VideoUploader channelId={id} channelName={activeChannel?.channelname} />
+            <VideoUploader channelId={rawId} channelName={activeChannel?.channelname} />
           </div>
         )}
 

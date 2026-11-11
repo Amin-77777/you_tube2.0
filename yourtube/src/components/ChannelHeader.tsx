@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
-import { Edit3, Globe, CheckCircle2 } from "lucide-react";
+import { Edit3, Globe, CheckCircle2, Bell } from "lucide-react";
+import { useChannelSubscription } from "@/lib/subscriptionUtils";
 
 interface ChannelHeaderProps {
   channel: any;
@@ -11,7 +12,11 @@ interface ChannelHeaderProps {
 }
 
 const ChannelHeader: React.FC<ChannelHeaderProps> = ({ channel, user, onEditProfile }) => {
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const channelIdentifier = channel?._id || channel?.id || channel?.channelname || "channel";
+  const channelDisplayName = channel?.channelname || "Channel";
+
+  const { isSubscribed, toggleSubscription, isLoading: isSubLoading } =
+    useChannelSubscription(channelIdentifier, channelDisplayName, user?._id || user?.id);
 
   const isOwner =
     user &&
@@ -70,7 +75,7 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({ channel, user, onEditProf
             <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground font-medium">
               <span className="font-mono text-foreground font-semibold">{handle}</span>
               <span>•</span>
-              <span>12.4K subscribers</span>
+              <span>{isSubscribed ? "12.4K+ subscribers" : "12.4K subscribers"}</span>
               <span>•</span>
               <span>Videos & Shorts</span>
             </div>
@@ -118,15 +123,23 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({ channel, user, onEditProf
               </Link>
             ) : (
               <Button
-                onClick={() => setIsSubscribed(!isSubscribed)}
-                variant={isSubscribed ? "outline" : "default"}
-                className={`rounded-full px-6 text-xs font-bold shadow-sm transition-all ${
+                type="button"
+                onClick={toggleSubscription}
+                disabled={isSubLoading}
+                className={`rounded-full px-5 text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 ${
                   isSubscribed
-                    ? "bg-muted text-foreground border-border hover:bg-muted/80"
+                    ? "bg-muted text-foreground border border-border hover:bg-muted/80"
                     : "bg-red-600 hover:bg-red-700 text-white"
                 }`}
               >
-                {isSubscribed ? "Subscribed" : "Subscribe"}
+                {isSubscribed ? (
+                  <>
+                    <Bell className="w-3.5 h-3.5 fill-current text-red-600 dark:text-red-400" />
+                    <span>Subscribed</span>
+                  </>
+                ) : (
+                  <span>Subscribe</span>
+                )}
               </Button>
             )}
           </div>
