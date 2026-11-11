@@ -701,7 +701,7 @@ const Comments = ({ videoId }: CommentsProps) => {
               variant="outline"
               size="sm"
               onClick={() => setIsPrefModalOpen(true)}
-              className="rounded-full h-8 px-2.5 text-xs text-gray-600 hover:text-gray-900 gap-1"
+              className="rounded-full h-8 px-2.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 gap-1 border-border"
               title="Comment & Language Settings"
             >
               <Settings className="w-3.5 h-3.5" />

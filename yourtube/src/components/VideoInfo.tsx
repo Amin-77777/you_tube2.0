@@ -194,7 +194,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <h1 className="text-xl font-bold text-gray-900">{video.videotitle}</h1>
+        <h1 className="text-xl font-bold text-foreground">{video.videotitle}</h1>
         {video.accessLevel && video.accessLevel !== "free" && (
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1 shadow-sm ${
@@ -216,7 +216,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-border">
         {/* Channel info & Subscribe */}
         <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
           <div className="flex items-center gap-3 min-w-0">
@@ -224,11 +224,11 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
               <AvatarFallback>{video.videochanel?.[0] || "C"}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">{video.videochanel}</h3>
-              <p className="text-xs text-gray-500">1.2M subscribers</p>
+              <h3 className="font-semibold text-sm sm:text-base text-foreground truncate">{video.videochanel}</h3>
+              <p className="text-xs text-muted-foreground">1.2M subscribers</p>
             </div>
           </div>
-          <Button className="shrink-0 rounded-full bg-black text-white hover:bg-gray-800 text-xs sm:text-sm px-4 py-1.5 h-9 font-medium shadow-xs">
+          <Button className="shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 text-xs sm:text-sm px-4 py-1.5 h-9 font-medium shadow-xs">
             Subscribe
           </Button>
         </div>
@@ -248,30 +248,30 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             <span>{downloading ? "Preparing..." : "Download"}</span>
           </Button>
 
-          <div className="shrink-0 flex items-center bg-gray-100 rounded-full h-9">
+          <div className="shrink-0 flex items-center bg-muted text-foreground rounded-full h-9">
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-l-full h-9 px-3 text-xs sm:text-sm"
+              className="rounded-l-full h-9 px-3 text-xs sm:text-sm hover:bg-muted/80 text-foreground"
               onClick={handleLike}
             >
               <ThumbsUp
                 className={`w-4 h-4 mr-1.5 ${
-                  isLiked ? "fill-black text-black" : ""
+                  isLiked ? "fill-foreground text-foreground" : ""
                 }`}
               />
               {likes.toLocaleString()}
             </Button>
-            <div className="w-px h-5 bg-gray-300" />
+            <div className="w-px h-5 bg-border" />
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-r-full h-9 px-3 text-xs sm:text-sm"
+              className="rounded-r-full h-9 px-3 text-xs sm:text-sm hover:bg-muted/80 text-foreground"
               onClick={handleDislike}
             >
               <ThumbsDown
                 className={`w-4 h-4 mr-1.5 ${
-                  isDisliked ? "fill-black text-black" : ""
+                  isDisliked ? "fill-foreground text-foreground" : ""
                 }`}
               />
               {dislikes.toLocaleString()}
@@ -281,7 +281,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className={`shrink-0 bg-gray-100 rounded-full h-9 px-3 text-xs sm:text-sm ${
+            className={`shrink-0 bg-muted hover:bg-muted/80 text-foreground rounded-full h-9 px-3 text-xs sm:text-sm ${
               isWatchLater ? "text-primary" : ""
             }`}
             onClick={handleWatchLater}
@@ -293,7 +293,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="shrink-0 bg-gray-100 rounded-full h-9 px-3 text-xs sm:text-sm"
+            className="shrink-0 bg-muted hover:bg-muted/80 text-foreground rounded-full h-9 px-3 text-xs sm:text-sm"
           >
             <Share className="w-4 h-4 mr-1.5" />
             Share
@@ -302,17 +302,17 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="shrink-0 bg-gray-100 hover:bg-gray-200 rounded-full text-blue-600 font-medium h-9 px-3 text-xs sm:text-sm"
+            className="shrink-0 bg-muted hover:bg-muted/80 rounded-full text-blue-600 dark:text-blue-400 font-medium h-9 px-3 text-xs sm:text-sm"
             onClick={() => setIsEditModalOpen(true)}
           >
-            <ImageIcon className="w-4 h-4 mr-1.5 text-blue-600" />
+            <ImageIcon className="w-4 h-4 mr-1.5 text-blue-600 dark:text-blue-400" />
             Thumbnail
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0 bg-gray-100 rounded-full h-9 w-9"
+            className="shrink-0 bg-muted hover:bg-muted/80 text-foreground rounded-full h-9 w-9"
           >
             <MoreHorizontal className="w-4 h-4" />
           </Button>
@@ -332,8 +332,8 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           }}
         />
       )}
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="flex gap-4 text-sm font-medium mb-2">
+      <div className="bg-muted/60 dark:bg-card/70 border border-border rounded-xl p-4 text-foreground">
+        <div className="flex gap-4 text-sm font-medium mb-2 text-muted-foreground">
           <span>{video.views.toLocaleString()} views</span>
           <span>{formatDistanceToNow(new Date(video.createdAt))} ago</span>
         </div>
@@ -346,7 +346,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
         <Button
           variant="ghost"
           size="sm"
-          className="mt-2 p-0 h-auto font-medium"
+          className="mt-2 p-0 h-auto font-medium text-foreground hover:text-foreground/80"
           onClick={() => setShowFullDescription(!showFullDescription)}
         >
           {showFullDescription ? "Show less" : "Show more"}
@@ -354,16 +354,16 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
       </div>
 
       {/* Prominent Offline Download Action Banner */}
-      <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+      <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/40 dark:to-orange-950/30 border border-red-200/80 dark:border-red-900/50 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-sm">
             <Download className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-sm text-gray-900">
+            <h4 className="font-bold text-sm text-foreground">
               Download video for offline playback
             </h4>
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-muted-foreground">
               {currentVideo?.filesize ? `Size: ${currentVideo.filesize} • ` : ""}
               Controlled daily quota • Secure download stream
             </p>
@@ -384,7 +384,7 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             variant="outline"
             size="sm"
             onClick={() => router.push("/subscriptions")}
-            className="rounded-full text-xs font-semibold border-red-200 text-red-700 hover:bg-red-100/50 flex-1 sm:flex-none justify-center"
+            className="rounded-full text-xs font-semibold border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-950/50 flex-1 sm:flex-none justify-center"
           >
             View Quota Plans
           </Button>

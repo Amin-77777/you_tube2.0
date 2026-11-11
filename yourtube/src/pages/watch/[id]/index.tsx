@@ -91,21 +91,21 @@ const WatchPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium text-sm animate-pulse">Loading video player...</p>
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-muted border-t-red-600 rounded-full animate-spin mb-4" />
+        <p className="text-muted-foreground font-medium text-sm animate-pulse">Loading video player...</p>
       </div>
     );
   }
 
   if (!currentVideo) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4 text-muted-foreground">
           <Film className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Video Not Found</h2>
-        <p className="text-sm text-gray-500 max-w-sm mb-6">
+        <h2 className="text-xl font-bold text-foreground mb-2">Video Not Found</h2>
+        <p className="text-sm text-muted-foreground max-w-sm mb-6">
           The video you are looking for does not exist or may have been removed.
         </p>
         <Link
@@ -120,7 +120,7 @@ const WatchPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
       {/* THEATER MODE: Full-width banner at top */}
       {isTheaterMode ? (
         <div>
