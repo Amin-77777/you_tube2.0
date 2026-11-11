@@ -50,25 +50,33 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
 
   useEffect(() => {
     const handleviews = async () => {
+      const vId = video?._id || currentVideo?._id;
+      if (!vId) return;
+
       if (user) {
         try {
-          return await axiosInstance.post(`/history/${video._id}`, {
-            userId: user?._id,
+          return await axiosInstance.post(`/history/${vId}`, {
+            userId: user?._id || user?.id,
           });
         } catch (error) {
           return console.log(error);
         }
       } else {
-        return await axiosInstance.post(`/history/views/${video?._id}`);
+        try {
+          return await axiosInstance.post(`/history/views/${vId}`);
+        } catch (error) {
+          return console.log(error);
+        }
       }
     };
     handleviews();
-  }, [user]);
+  }, [user, video?._id]);
   const handleLike = async () => {
-    if (!user) return;
+    const vId = video?._id || currentVideo?._id;
+    if (!user || !vId) return;
     try {
-      const res = await axiosInstance.post(`/like/${video._id}`, {
-        userId: user?._id,
+      const res = await axiosInstance.post(`/like/${vId}`, {
+        userId: user?._id || user?.id,
       });
       if (res.data.liked) {
         if (isLiked) {
@@ -88,9 +96,11 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
     }
   };
   const handleWatchLater = async () => {
+    const vId = video?._id || currentVideo?._id;
+    if (!vId) return;
     try {
-      const res = await axiosInstance.post(`/watch/${video._id}`, {
-        userId: user?._id,
+      const res = await axiosInstance.post(`/watch/${vId}`, {
+        userId: user?._id || user?.id,
       });
       if (res.data.watchlater) {
         setIsWatchLater(!isWatchLater);
@@ -102,10 +112,11 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
     }
   };
   const handleDislike = async () => {
-    if (!user) return;
+    const vId = video?._id || currentVideo?._id;
+    if (!user || !vId) return;
     try {
-      const res = await axiosInstance.post(`/like/${video._id}`, {
-        userId: user?._id,
+      const res = await axiosInstance.post(`/like/${vId}`, {
+        userId: user?._id || user?.id,
       });
       if (!res.data.liked) {
         if (isDisliked) {

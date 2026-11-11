@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Subscription from "../Modals/Subscription.js";
 import User from "../Modals/Auth.js";
 import { DOWNLOAD_CONFIG, getPlanDailyLimit } from "../config/downloadConfig.js";
@@ -11,6 +12,23 @@ import {
  * Get or initialize user's current subscription.
  */
 export async function getOrCreateUserSubscription(userId) {
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    return {
+      plan: "Free",
+      duration: "monthly",
+      status: "ACTIVE",
+      startDate: new Date(),
+      endDate: null,
+      expiryDate: null,
+      renewalDate: null,
+      autoRenew: true,
+      registeredDevices: [],
+      history: [],
+      isActive: () => true,
+      save: async () => {},
+    };
+  }
+
   let sub = await Subscription.findOne({ userId });
   const now = new Date();
 

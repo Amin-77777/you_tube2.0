@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -58,6 +59,14 @@ export const authorizeDownload = async (req, res) => {
     req.headers["idempotency-key"] || req.body?.idempotencyKey || null;
 
   try {
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+      return res.status(404).json({
+        authorized: false,
+        error: "VideoNotFound",
+        message: "The requested video does not exist or has been removed.",
+      });
+    }
+
     // 1. Verify Video existence and accessibility
     const videoDoc = await Video.findById(videoId);
     if (!videoDoc) {

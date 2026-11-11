@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { SUBSCRIPTION_CONFIG, hasRequiredAccess } from "../config/subscriptionPlans.js";
 import { getOrCreateUserSubscription } from "../controllers/subscription.js";
 import Video from "../Modals/video.js";
@@ -55,7 +56,7 @@ export function getDailyWatchLimit(userPlanName) {
  */
 export const checkVideoPlaybackAccess = async (req, res, next) => {
   const videoId = req.params.videoId || req.params.id;
-  if (!videoId) return next();
+  if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) return next();
 
   try {
     const videoDoc = await Video.findById(videoId);

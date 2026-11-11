@@ -13,6 +13,9 @@ const normalizedBackend = (
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    webpackBuildWorker: false,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

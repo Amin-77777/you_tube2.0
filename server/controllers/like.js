@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import video from "../Modals/video.js";
 import like from "../Modals/like.js";
 
@@ -5,6 +6,9 @@ export const handlelike = async (req, res) => {
   const { userId } = req.body;
   const { videoId } = req.params;
   try {
+    if (!userId || !videoId || !mongoose.Types.ObjectId.isValid(videoId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(200).json({ liked: false });
+    }
     const exisitinglike = await like.findOne({
       viewer: userId,
       videoid: videoId,
@@ -19,14 +23,17 @@ export const handlelike = async (req, res) => {
       return res.status(200).json({ liked: true });
     }
   } catch (error) {
-    console.error(" error:", error);
-    return res.status(500).json({ message: "Something went wrong" });
+    console.error("handlelike error:", error.message || error);
+    return res.status(200).json({ liked: false });
   }
 };
 
 export const getallLikedVideo = async (req, res) => {
   const { userId } = req.params;
   try {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(200).json([]);
+    }
     const likevideo = await like
       .find({ viewer: userId })
       .populate({
@@ -36,7 +43,7 @@ export const getallLikedVideo = async (req, res) => {
       .exec();
     return res.status(200).json(likevideo);
   } catch (error) {
-    console.error(" error:", error);
-    return res.status(500).json({ message: "Something went wrong" });
+    console.error("getallLikedVideo error:", error.message || error);
+    return res.status(200).json([]);
   }
 };

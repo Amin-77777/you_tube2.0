@@ -99,75 +99,96 @@ app.all("/uploads/:filename", (req, res) => {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const filePath = resolveUploadPath(req.params.filename);
-  if (!filePath) {
-    return res.status(404).json({ error: "Media file not found" });
-  }
+  try {
+    const filePath = resolveUploadPath(req.params.filename);
+    if (!filePath) {
+      return res.status(404).json({ error: "Media file not found" });
+    }
 
-  const stat = fs.statSync(filePath);
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType = MIME_MAP[ext] || "application/octet-stream";
+    const stat = fs.statSync(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_MAP[ext] || "application/octet-stream";
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Range, Origin, Content-Type, Accept, Cache-Control");
-  res.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges, Content-Type");
-  res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Range, Origin, Content-Type, Accept, Cache-Control");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges, Content-Type");
+    res.setHeader("Accept-Ranges", "bytes");
 
-  // Handle video streaming with Range requests
-  if (contentType.startsWith("video/")) {
-    const fileSize = stat.size;
-    const range = req.headers.range;
+    // Handle video streaming with Range requests
+    if (contentType.startsWith("video/")) {
+      const fileSize = stat.size;
+      const range = req.headers.range;
 
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-      if (start >= fileSize) {
-        res.status(416).setHeader("Content-Range", `bytes */${fileSize}`);
-        return res.end();
+        if (start >= fileSize) {
+          res.status(416).setHeader("Content-Range", `bytes */${fileSize}`);
+          return res.end();
+        }
+
+        const chunkSize = end - start + 1;
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": contentType,
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
+        });
+
+        if (req.method === "HEAD") {
+          return res.end();
+        }
+
+        const fileStream = fs.createReadStream(filePath, { start, end });
+        fileStream.on("error", (streamErr) => {
+          console.warn("Upload streaming error:", streamErr.message);
+          if (!res.headersSent) res.status(500).end();
+        });
+        fileStream.pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": fileSize,
+          "Content-Type": contentType,
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
+        });
+
+        if (req.method === "HEAD") {
+          return res.end();
+        }
+
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.on("error", (streamErr) => {
+          console.warn("Upload streaming error:", streamErr.message);
+          if (!res.headersSent) res.status(500).end();
+        });
+        fileStream.pipe(res);
       }
-
-      const chunkSize = end - start + 1;
-      res.writeHead(206, {
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": chunkSize,
-        "Content-Type": contentType,
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
-      });
-
-      if (req.method === "HEAD") {
-        return res.end();
-      }
-
-      const fileStream = fs.createReadStream(filePath, { start, end });
-      fileStream.pipe(res);
     } else {
-      res.writeHead(200, {
-        "Content-Length": fileSize,
-        "Content-Type": contentType,
-        "Accept-Ranges": "bytes",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
-      });
-
+      // Images and static assets
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Length", stat.size);
       if (req.method === "HEAD") {
         return res.end();
       }
-
-      fs.createReadStream(filePath).pipe(res);
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.on("error", (streamErr) => {
+        console.warn("Upload file read error:", streamErr.message);
+        if (!res.headersSent) res.status(500).end();
+      });
+      fileStream.pipe(res);
     }
-  } else {
-    // Images and static assets
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Length", stat.size);
-    if (req.method === "HEAD") {
-      return res.end();
+  } catch (err) {
+    console.error("Upload route error:", err.message);
+    if (!res.headersSent) {
+      return res.status(404).json({ error: "Media file not found or inaccessible" });
     }
-    fs.createReadStream(filePath).pipe(res);
   }
 });
 
