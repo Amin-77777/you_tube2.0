@@ -11,7 +11,21 @@ import {
 } from "./types";
 import { toast } from "sonner";
 
-const DEFAULT_STUN_SERVERS: RTCIceServer[] = [
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
+  // High-availability TURN relays for guaranteed cross-network / symmetric NAT traversal
+  {
+    urls: [
+      "turns:global.relay.metered.ca:443?transport=tcp",
+      "turns:global.relay.metered.ca:443",
+      "turn:global.relay.metered.ca:443?transport=tcp",
+      "turn:global.relay.metered.ca:80?transport=tcp",
+      "turn:global.relay.metered.ca:443",
+      "turn:global.relay.metered.ca:80",
+    ],
+    username: "5fb8a143664ae6d740fb410c",
+    credential: "mdHq5zbLX6ZTOptJ",
+  },
+  // Global STUN pools
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
   { urls: "stun:stun2.l.google.com:19302" },
@@ -23,8 +37,11 @@ const DEFAULT_STUN_SERVERS: RTCIceServer[] = [
 ];
 
 let globalCachedIceConfig: RTCConfiguration = {
-  iceServers: DEFAULT_STUN_SERVERS,
+  iceServers: DEFAULT_ICE_SERVERS,
   iceCandidatePoolSize: 10,
+  iceTransportPolicy: "all",
+  bundlePolicy: "max-bundle",
+  rtcpMuxPolicy: "require",
 };
 
 // Check for client-side environment variables on module load
@@ -36,7 +53,7 @@ if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_TURN_URL) {
       username: process.env.NEXT_PUBLIC_TURN_USERNAME,
       credential: process.env.NEXT_PUBLIC_TURN_PASSWORD,
     },
-    ...DEFAULT_STUN_SERVERS,
+    ...DEFAULT_ICE_SERVERS,
   ];
 }
 
@@ -56,8 +73,8 @@ async function fetchLatestIceConfig(): Promise<RTCConfiguration> {
         const servers = await res.json();
         if (Array.isArray(servers) && servers.length > 0) {
           globalCachedIceConfig = {
-            iceServers: [...servers, ...DEFAULT_STUN_SERVERS],
-            iceCandidatePoolSize: 10,
+            ...globalCachedIceConfig,
+            iceServers: [...servers, ...DEFAULT_ICE_SERVERS],
           };
           console.log("[WebRTC] Loaded Metered TURN servers from frontend env");
           return globalCachedIceConfig;
@@ -72,15 +89,15 @@ async function fetchLatestIceConfig(): Promise<RTCConfiguration> {
       const data = await res.json();
       if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
         globalCachedIceConfig = {
+          ...globalCachedIceConfig,
           iceServers: data.iceServers,
-          iceCandidatePoolSize: 10,
         };
         console.log("[WebRTC] Loaded ICE servers from backend:", data.iceServers.length, "servers");
         return globalCachedIceConfig;
       }
     }
   } catch (err) {
-    console.warn("[WebRTC] Could not fetch remote ICE configuration, using default STUN:", err);
+    console.warn("[WebRTC] Could not fetch remote ICE configuration, using default ICE:", err);
   }
   return globalCachedIceConfig;
 }
@@ -157,6 +174,8 @@ export function useWebRTC({
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const remoteStreamsRef = useRef<{ [socketId: string]: MediaStream }>({});
+  const reconnectPeerRef = useRef<((id: string) => Promise<void>) | null>(null);
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(
     new Map()
   );
@@ -188,7 +207,18 @@ export function useWebRTC({
 
   // Asynchronously fetch latest ICE configuration from backend / Metered on mount
   useEffect(() => {
-    fetchLatestIceConfig().catch(() => {});
+    fetchLatestIceConfig()
+      .then((config) => {
+        // Dynamically update any already open peer connections with newly fetched TURN credentials
+        peersRef.current.forEach((pc) => {
+          try {
+            pc.setConfiguration(config);
+          } catch (e) {
+            console.warn("[WebRTC] pc.setConfiguration error:", e);
+          }
+        });
+      })
+      .catch(() => {});
   }, []);
 
   // Keep localStreamRef synced and ensure all peers have local tracks via transceivers
@@ -528,27 +558,45 @@ export function useWebRTC({
       // Handle incoming remote stream tracks
       pc.ontrack = (event) => {
         console.log(
-          `[WebRTC] ontrack received ${event.track.kind} (${event.track.id}) from ${targetSocketId}`
+          `[WebRTC] ontrack: kind=${event.track.kind}, id=${event.track.id}, muted=${event.track.muted}, readyState=${event.track.readyState} from ${targetSocketId}`
         );
-        setRemoteStreams((prev) => {
-          const existing = prev[targetSocketId];
-          const stream =
-            event.streams && event.streams[0]
-              ? event.streams[0]
-              : existing || new MediaStream();
 
-          if (!stream.getTracks().some((t) => t.id === event.track.id)) {
-            stream.addTrack(event.track);
-          }
+        // Maintain persistent MediaStream instance per peer to prevent video element tearing
+        let peerStream = remoteStreamsRef.current[targetSocketId];
+        if (!peerStream) {
+          peerStream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream();
+          remoteStreamsRef.current[targetSocketId] = peerStream;
+        }
 
-          const activeTracks = stream
-            .getTracks()
-            .filter((t) => t.readyState !== "ended");
-          return {
+        // Add track if missing from this peer's stream
+        if (!peerStream.getTracks().some((t) => t.id === event.track.id)) {
+          peerStream.addTrack(event.track);
+        }
+
+        const notifyStreamChange = () => {
+          setRemoteStreams((prev) => ({
             ...prev,
-            [targetSocketId]: new MediaStream(activeTracks),
-          };
-        });
+            [targetSocketId]: peerStream,
+          }));
+        };
+
+        notifyStreamChange();
+
+        // Listen reactively to unmute event (when the first real RTP media frame is received)
+        event.track.onunmute = () => {
+          console.log(`[WebRTC] Remote track unmuted (receiving video/audio packets): ${event.track.kind} (${targetSocketId})`);
+          notifyStreamChange();
+        };
+
+        event.track.onmute = () => {
+          console.log(`[WebRTC] Remote track muted (packet stream paused): ${event.track.kind} (${targetSocketId})`);
+          notifyStreamChange();
+        };
+
+        event.track.onended = () => {
+          console.log(`[WebRTC] Remote track ended: ${event.track.kind} (${targetSocketId})`);
+          notifyStreamChange();
+        };
       };
 
       // Connection quality monitoring & ICE auto-recovery
@@ -557,7 +605,20 @@ export function useWebRTC({
         console.log(`[WebRTC] Peer ${targetSocketId} connection state: ${state}`);
         let quality: "good" | "fair" | "poor" = "good";
         if (state === "connecting") quality = "fair";
-        else if (state === "disconnected" || state === "failed") quality = "poor";
+        else if (state === "disconnected" || state === "failed") {
+          quality = "poor";
+          // Schedule auto-recovery if disconnected for more than 2 seconds
+          setTimeout(() => {
+            const currentPc = peersRef.current.get(targetSocketId);
+            if (
+              currentPc &&
+              (currentPc.connectionState === "disconnected" || currentPc.connectionState === "failed")
+            ) {
+              console.log(`[WebRTC] Auto-recovering disconnected peer connection for ${targetSocketId}`);
+              reconnectPeerRef.current?.(targetSocketId);
+            }
+          }, 2000);
+        }
 
         setParticipants((prev) =>
           prev.map((p) =>
@@ -589,12 +650,8 @@ export function useWebRTC({
         }));
 
         if (iceState === "failed") {
-          console.warn(`[WebRTC] ICE connection failed with ${targetSocketId}. Retrying via restartIce...`);
-          try {
-            pc.restartIce();
-          } catch (e) {
-            console.warn("restartIce error:", e);
-          }
+          console.warn(`[WebRTC] ICE connection failed with ${targetSocketId}. Retrying with ICE restart offer...`);
+          reconnectPeerRef.current?.(targetSocketId);
         }
       };
 
@@ -1202,7 +1259,10 @@ export function useWebRTC({
         pc.close();
         peersRef.current.delete(socketId);
       }
-      // Remove remote stream
+      // Remove remote stream reference and state
+      if (remoteStreamsRef.current[socketId]) {
+        delete remoteStreamsRef.current[socketId];
+      }
       setRemoteStreams((prev) => {
         const next = { ...prev };
         delete next[socketId];
@@ -1225,7 +1285,21 @@ export function useWebRTC({
     socket.on("offer", async ({ sender, offer }) => {
       try {
         const pc = createPeerConnection(sender);
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+        // Safe handling of offer collision (glare)
+        if (pc.signalingState !== "stable" && offer.type === "offer") {
+          console.log(`[WebRTC] Resolving signaling state collision (${pc.signalingState}) with ${sender}`);
+          try {
+            await Promise.all([
+              pc.setLocalDescription({ type: "rollback" }),
+              pc.setRemoteDescription(new RTCSessionDescription(offer)),
+            ]);
+          } catch (_) {
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+          }
+        } else {
+          await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        }
 
         // Process any queued candidates safely
         const pending = pendingCandidatesRef.current.get(sender) || [];
@@ -1460,22 +1534,57 @@ export function useWebRTC({
       }
       peersRef.current.forEach((pc) => pc.close());
       peersRef.current.clear();
+      if (remoteStreamsRef.current) {
+        Object.keys(remoteStreamsRef.current).forEach((k) => delete remoteStreamsRef.current[k]);
+      }
     };
   }, [cleanupAudioDetection]);
 
-  // Manually trigger ICE restart for a given peer
-  const reconnectPeer = useCallback((targetSocketId: string) => {
-    const pc = peersRef.current.get(targetSocketId);
-    if (pc) {
-      try {
-        console.log(`[WebRTC] Manual reconnect / restartIce requested for ${targetSocketId}`);
-        pc.restartIce();
-        toast.info("Reconnecting peer connection...");
-      } catch (e) {
-        console.warn("restartIce error:", e);
+  // Manually or automatically trigger ICE restart and full re-negotiation for a peer
+  const reconnectPeer = useCallback(
+    async (targetSocketId: string) => {
+      console.log(`[WebRTC] Reconnecting peer ${targetSocketId}...`);
+      toast.info("Reconnecting peer video connection...");
+
+      let pc = peersRef.current.get(targetSocketId);
+      if (!pc || pc.connectionState === "closed") {
+        pc = createPeerConnection(targetSocketId);
       }
-    }
-  }, []);
+
+      try {
+        try {
+          pc.setConfiguration(globalCachedIceConfig);
+        } catch (_) {}
+
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+
+        socket.emit("offer", {
+          target: targetSocketId,
+          offer,
+        });
+      } catch (err) {
+        console.warn("[WebRTC] restartIce offer failed, recreating peer connection:", err);
+        try {
+          pc.close();
+        } catch (_) {}
+        peersRef.current.delete(targetSocketId);
+        const freshPc = createPeerConnection(targetSocketId);
+        try {
+          const offer = await freshPc.createOffer();
+          await freshPc.setLocalDescription(offer);
+          socket.emit("offer", { target: targetSocketId, offer });
+        } catch (offerErr) {
+          console.error("[WebRTC] Recreate peer offer error:", offerErr);
+        }
+      }
+    },
+    [socket, createPeerConnection]
+  );
+
+  useEffect(() => {
+    reconnectPeerRef.current = reconnectPeer;
+  }, [reconnectPeer]);
 
   return {
     currentSocketId,

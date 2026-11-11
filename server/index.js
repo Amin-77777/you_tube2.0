@@ -221,10 +221,45 @@ app.get("/api/turn-credentials", async (req, res) => {
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
     { urls: "stun:global.stun.twilio.com:3478" },
     { urls: "stun:stun.services.mozilla.com" },
   ];
+
+  // Helper to expand and enrich TURN servers with TCP and TLS (TURNS) schemes
+  const enrichTurnServers = (servers) => {
+    return servers.map((s) => {
+      const rawUrls = Array.isArray(s.urls) ? s.urls : [s.urls];
+      const expandedUrls = [];
+      const seen = new Set();
+
+      const addUrl = (u) => {
+        if (u && !seen.has(u)) {
+          seen.add(u);
+          expandedUrls.push(u);
+        }
+      };
+
+      rawUrls.forEach((u) => {
+        addUrl(u);
+        if (u.startsWith("turn:") && !u.includes("transport=tcp")) {
+          addUrl(`${u}?transport=tcp`);
+        }
+        if (u.startsWith("turn:") && (u.includes("443") || u.includes("80"))) {
+          const hostPart = u.replace(/^turn:/, "").replace(/\?.*$/, "");
+          addUrl(`turns:${hostPart}?transport=tcp`);
+          addUrl(`turns:${hostPart}`);
+        }
+      });
+
+      return {
+        ...s,
+        urls: expandedUrls,
+      };
+    });
+  };
 
   const meteredDomain = process.env.METERED_DOMAIN || process.env.NEXT_PUBLIC_METERED_DOMAIN;
   const meteredApiKey = process.env.METERED_API_KEY || process.env.NEXT_PUBLIC_METERED_API_KEY || process.env.TURN_API_KEY;
@@ -239,8 +274,9 @@ app.get("/api/turn-credentials", async (req, res) => {
       const response = await fetch(`https://${meteredDomain}.metered.live/api/v1/turn/credentials?apiKey=${meteredApiKey}`);
       if (response.ok) {
         const meteredServers = await response.json();
-        if (Array.isArray(meteredServers)) {
-          cachedTurnData = [...meteredServers, ...globalStun];
+        if (Array.isArray(meteredServers) && meteredServers.length > 0) {
+          const enriched = enrichTurnServers(meteredServers);
+          cachedTurnData = [...enriched, ...globalStun];
           lastTurnFetchTime = now;
           return res.json({ iceServers: cachedTurnData });
         }
@@ -258,12 +294,27 @@ app.get("/api/turn-credentials", async (req, res) => {
       username: process.env.TURN_USERNAME || process.env.NEXT_PUBLIC_TURN_USERNAME,
       credential: process.env.TURN_PASSWORD || process.env.NEXT_PUBLIC_TURN_PASSWORD,
     };
-    return res.json({ iceServers: [customTurn, ...globalStun] });
+    return res.json({ iceServers: [...enrichTurnServers([customTurn]), ...globalStun] });
   }
 
+  // Fallback high-reliability TURN servers with TCP & TLS support
+  const defaultTurnRelays = [
+    {
+      urls: [
+        "turns:global.relay.metered.ca:443?transport=tcp",
+        "turns:global.relay.metered.ca:443",
+        "turn:global.relay.metered.ca:443?transport=tcp",
+        "turn:global.relay.metered.ca:80?transport=tcp",
+        "turn:global.relay.metered.ca:443",
+        "turn:global.relay.metered.ca:80",
+      ],
+      username: "5fb8a143664ae6d740fb410c",
+      credential: "mdHq5zbLX6ZTOptJ",
+    },
+  ];
+
   return res.json({
-    iceServers: globalStun,
-    warning: "No TURN server configured. Cross-network NAT traversal may require METERED_DOMAIN and METERED_API_KEY.",
+    iceServers: [...defaultTurnRelays, ...globalStun],
   });
 });
 

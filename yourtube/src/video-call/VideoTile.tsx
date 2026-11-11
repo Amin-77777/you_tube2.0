@@ -93,9 +93,18 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         if (videoEl.srcObject !== stream) {
           videoEl.srcObject = stream;
         }
-        videoEl.play().catch((err) => {
-          console.warn("[VideoTile] Video play error:", err);
-        });
+        const playVideo = () => {
+          videoEl.play().catch((err) => {
+            console.warn("[VideoTile] Video play error:", err);
+          });
+        };
+        playVideo();
+        videoEl.addEventListener("loadedmetadata", playVideo);
+        videoEl.addEventListener("canplay", playVideo);
+        return () => {
+          videoEl.removeEventListener("loadedmetadata", playVideo);
+          videoEl.removeEventListener("canplay", playVideo);
+        };
       }
     }
   }, [stream, trackRev]);
@@ -164,11 +173,15 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     );
   };
 
-  const activeVideoTracks = stream
-    ? stream.getVideoTracks().filter((t) => t.readyState === "live")
-    : [];
-  const hasVideoTrack = activeVideoTracks.length > 0;
-  const isVideoOff = !participant.videoEnabled || !hasVideoTrack;
+  const videoTracks = stream ? stream.getVideoTracks() : [];
+  const liveVideoTracks = videoTracks.filter((t) => t.readyState === "live");
+  // A remote video track actually has incoming frames if it's unmuted (!t.muted) and enabled
+  const isReceivingFrames = isLocal
+    ? liveVideoTracks.length > 0 && liveVideoTracks[0].enabled
+    : liveVideoTracks.some((t) => !t.muted && t.enabled);
+
+  const isVideoOff = !participant.videoEnabled || liveVideoTracks.length === 0;
+  const isVideoBuffering = !isLocal && participant.videoEnabled && liveVideoTracks.length > 0 && !isReceivingFrames;
   const isAudioMuted = !participant.audioEnabled;
 
   return (
@@ -194,9 +207,9 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         autoPlay
         playsInline
         muted={true}
-        className={`w-full h-full object-cover transition-opacity duration-200 ${
+        className={`w-full h-full object-cover transition-opacity duration-300 ${
           isLocal ? "transform -scale-x-100" : ""
-        } ${isVideoOff ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"}`}
+        } ${isVideoOff || isVideoBuffering ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"}`}
       />
 
       {/* Autoplay blocked recovery banner */}
@@ -217,19 +230,46 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         </button>
       )}
 
-      {/* Avatar Placeholder when video is off */}
-      {isVideoOff && (
+      {/* Reconnecting / Poor Connection Banner */}
+      {!isLocal && participant.connectionQuality === "poor" && onReconnect && (
+        <button
+          onClick={() => onReconnect(participant.socketId)}
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+          title="Click to re-establish peer video connection"
+        >
+          <RotateCcw className="w-3 h-3 animate-spin" />
+          <span>Stream reconnecting • Click to retry</span>
+        </button>
+      )}
+
+      {/* Avatar Placeholder when video is off OR buffering/connecting */}
+      {(isVideoOff || isVideoBuffering) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950">
-          <div
-            className={`w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-xl transition-all ${
-              participant.isSpeaking
-                ? "bg-emerald-600 ring-4 ring-emerald-500/40 animate-pulse"
-                : "bg-gray-800"
-            }`}
-          >
-            {participant.userName ? participant.userName[0].toUpperCase() : "U"}
+          <div className="relative">
+            <div
+              className={`w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-xl transition-all ${
+                participant.isSpeaking
+                  ? "bg-emerald-600 ring-4 ring-emerald-500/40 animate-pulse"
+                  : "bg-gray-800"
+              }`}
+            >
+              {participant.userName ? participant.userName[0].toUpperCase() : "U"}
+            </div>
+            {isVideoBuffering && (
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-gray-900">
+                <RotateCcw className="w-3.5 h-3.5 text-black animate-spin" />
+              </div>
+            )}
           </div>
-          <p className="mt-3 text-sm text-gray-400 font-medium">{participant.userName}</p>
+          <p className="mt-3 text-sm text-gray-300 font-medium">{participant.userName}</p>
+          {isVideoBuffering && (
+            <p className="mt-1 text-xs text-amber-400 font-medium flex items-center gap-1 animate-pulse">
+              <span>Connecting video stream...</span>
+            </p>
+          )}
+          {!participant.videoEnabled && (
+            <p className="mt-1 text-xs text-gray-500 font-medium">Camera off</p>
+          )}
         </div>
       )}
 
