@@ -71,12 +71,6 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: BACKEND_URL
-        fromService:
-          type: web
-          name: youtube-backend
-          property: host
+        value: https://youtube-backend-dc7c.onrender.com
       - key: NEXT_PUBLIC_BACKEND_URL
-        fromService:
-          type: web
-          name: youtube-backend
-          property: host
+        value: https://youtube-backend-dc7c.onrender.com
