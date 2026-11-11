@@ -79,7 +79,7 @@ const Header = () => {
               className="shrink-0 rounded-full"
               aria-label="Back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
+              <ArrowLeft className="w-5 h-5 text-foreground" />
             </Button>
             <div className="flex-1 relative flex items-center">
               <Input
@@ -89,13 +89,13 @@ const Header = () => {
                 autoFocus
                 onKeyPress={handleKeypress}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-full pr-9 bg-gray-100 border-gray-200 focus-visible:ring-1"
+                className="w-full rounded-full pr-9 bg-muted border-border text-foreground focus-visible:ring-1"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 text-muted-foreground hover:text-foreground"
                   aria-label="Clear search"
                 >
                   <X className="w-4 h-4" />
@@ -109,7 +109,7 @@ const Header = () => {
               className="rounded-full shrink-0"
               aria-label="Submit search"
             >
-              <Search className="w-5 h-5 text-gray-700" />
+              <Search className="w-5 h-5 text-foreground" />
             </Button>
           </form>
         ) : (
@@ -120,10 +120,10 @@ const Header = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMobileDrawerOpen(true)}
-                className="rounded-full"
+                className="rounded-full text-foreground hover:bg-muted"
                 aria-label="Open navigation menu"
               >
-                <Menu className="w-6 h-6 text-gray-700" />
+                <Menu className="w-6 h-6 text-foreground" />
               </Button>
               <Link href="/" className="flex items-center gap-1.5 focus:outline-none">
                 <div className="bg-red-600 p-1 rounded-lg shadow-xs">
@@ -148,13 +148,13 @@ const Header = () => {
                   value={searchQuery}
                   onKeyPress={handleKeypress}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="rounded-l-full border-r-0 focus-visible:ring-0"
+                  className="rounded-l-full border-r-0 focus-visible:ring-0 bg-muted/40 border-border text-foreground placeholder:text-muted-foreground"
                 />
                 <Button
                   type="submit"
-                  className="rounded-r-full px-6 bg-gray-50 hover:bg-gray-100 text-gray-600 border border-l-0"
+                  className="rounded-r-full px-6 bg-muted hover:bg-muted/80 text-foreground border border-border border-l-0"
                 >
-                  <Search className="w-5 h-5" />
+                  <Search className="w-5 h-5 text-foreground" />
                 </Button>
               </div>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -169,10 +169,10 @@ const Header = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMobileSearchOpen(true)}
-                className="md:hidden rounded-full"
+                className="md:hidden rounded-full text-foreground hover:bg-muted"
                 aria-label="Search"
               >
-                <Search className="w-5 h-5 text-gray-700" />
+                <Search className="w-5 h-5 text-foreground" />
               </Button>
 
               {/* Downloads Button - hidden on extra small screens */}
@@ -237,19 +237,25 @@ const Header = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                       {user?.channelname ? (
-                        <DropdownMenuItem asChild>
-                          <Link href={`/channel/${user?._id || user?.id}`}>Your channel</Link>
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/channel/${user?._id || user?.id}`}>Your channel</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/channel/create?mode=edit">Edit channel profile</Link>
+                          </DropdownMenuItem>
+                        </>
                       ) : (
-                        <div className="px-2 py-1.5">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => setisdialogeopen(true)}
-                          >
-                            Create Channel
-                          </Button>
+                        <div className="px-2 py-1.5 space-y-1">
+                          <Link href="/channel/create" className="w-full block">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="w-full text-xs font-semibold"
+                            >
+                              Create Channel
+                            </Button>
+                          </Link>
                         </div>
                       )}
                       <DropdownMenuItem asChild>
@@ -451,28 +457,35 @@ const Header = () => {
                       <span>My Subscription</span>
                     </Link>
 
-                    <div className="pt-2 border-t mt-2">
+                    <div className="pt-2 border-t border-border mt-2 space-y-1">
                       {user?.channelname ? (
-                        <Link
-                          href={`/channel/${user?._id || user?.id}`}
-                          onClick={() => setIsMobileDrawerOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
-                        >
-                          <User className="w-5 h-5 text-gray-700" />
-                          <span>Your channel</span>
-                        </Link>
+                        <>
+                          <Link
+                            href={`/channel/${user?._id || user?.id}`}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-foreground"
+                          >
+                            <User className="w-5 h-5 text-foreground" />
+                            <span>Your channel</span>
+                          </Link>
+                          <Link
+                            href="/channel/create?mode=edit"
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-foreground"
+                          >
+                            <User className="w-5 h-5 text-foreground" />
+                            <span>Edit channel profile</span>
+                          </Link>
+                        </>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsMobileDrawerOpen(false);
-                            setisdialogeopen(true);
-                          }}
-                          className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                        <Link
+                          href="/channel/create"
+                          onClick={() => setIsMobileDrawerOpen(false)}
+                          className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-foreground"
                         >
-                          <User className="w-5 h-5 text-gray-700" />
+                          <User className="w-5 h-5 text-foreground" />
                           <span>Create Channel</span>
-                        </button>
+                        </Link>
                       )}
 
                       <button
@@ -481,7 +494,7 @@ const Header = () => {
                           setIsMobileDrawerOpen(false);
                           logout();
                         }}
-                        className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors mt-1"
+                        className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors mt-1"
                       >
                         <LogOut className="w-5 h-5 text-red-600" />
                         <span>Sign out</span>

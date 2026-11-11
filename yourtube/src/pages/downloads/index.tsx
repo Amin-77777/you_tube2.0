@@ -219,12 +219,12 @@ export default function DownloadsPage() {
         <Head>
           <title>Downloads - YourTube</title>
         </Head>
-        <div className="bg-white border rounded-2xl p-10 text-center shadow-sm max-w-lg mx-auto mt-12">
-          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="bg-card border border-border rounded-2xl p-10 text-center shadow-sm max-w-lg mx-auto mt-12 transition-colors">
+          <div className="w-16 h-16 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <Download className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Sign in to view Downloads</h2>
-          <p className="text-sm text-gray-500 mb-6">
+          <h2 className="text-xl font-bold text-foreground mb-2">Sign in to view Downloads</h2>
+          <p className="text-sm text-muted-foreground mb-6">
             Sign in with your account to track your daily download quota and download videos for offline viewing.
           </p>
           <Link href="/signin?redirect=/downloads">
@@ -245,11 +245,11 @@ export default function DownloadsPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Download className="w-7 h-7 text-red-600" />
             Downloads & Offline Media
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Manage your downloaded videos, track quota usage, and retry offline requests.
           </p>
         </div>
@@ -279,7 +279,7 @@ export default function DownloadsPage() {
       <QuotaCard quota={quota} loading={quotaLoading} />
 
       {/* Filter and Search Bar */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
+      <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3 transition-colors">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Status Filters */}
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
@@ -292,8 +292,8 @@ export default function DownloadsPage() {
                 }}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
                   statusFilter === status
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 }`}
               >
                 {status === "ALL" ? "All Records" : status.replace("_", " ")}
@@ -304,13 +304,13 @@ export default function DownloadsPage() {
           {/* Search Input */}
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full md:w-72">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search downloads..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-xs rounded-full bg-gray-50 focus-visible:ring-1"
+                className="pl-9 h-9 text-xs rounded-full bg-muted/50 border-border text-foreground focus-visible:ring-1"
               />
             </div>
             <Button type="submit" size="sm" variant="ghost" className="h-9 px-3 rounded-full text-xs">
@@ -324,14 +324,14 @@ export default function DownloadsPage() {
       {historyLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
           ))}
         </div>
       ) : history.length === 0 ? (
-        <div className="bg-white border rounded-2xl p-12 text-center shadow-sm">
-          <Film className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-gray-800">No downloads found</h3>
-          <p className="text-xs text-gray-500 max-w-sm mx-auto mt-1 mb-4">
+        <div className="bg-card border border-border rounded-2xl p-12 text-center shadow-sm">
+          <Film className="w-12 h-12 text-muted-foreground/60 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-foreground">No downloads found</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 mb-4">
             {statusFilter !== "ALL" || searchQuery
               ? "No download records matched your filter criteria."
               : "You haven't downloaded any videos yet. Browse videos and hit Download to save them offline."}
@@ -355,11 +355,11 @@ export default function DownloadsPage() {
             return (
               <div
                 key={record._id}
-                className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               >
                 <div className="flex items-start gap-4 flex-1 min-w-0">
                   {/* Thumbnail */}
-                  <div className="relative w-28 sm:w-36 aspect-video bg-gray-100 rounded-lg overflow-hidden shrink-0 border">
+                  <div className="relative w-28 sm:w-36 aspect-video bg-muted rounded-lg overflow-hidden shrink-0 border border-border">
                     <img
                       src={video?.thumbnail || "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400"}
                       alt={video?.videotitle || "Video thumbnail"}
@@ -376,12 +376,12 @@ export default function DownloadsPage() {
                   <div className="space-y-1 min-w-0 flex-1">
                     <Link
                       href={video?._id ? `/watch/${video._id}` : "#"}
-                      className="text-sm font-bold text-gray-900 hover:text-red-600 line-clamp-1 transition-colors"
+                      className="text-sm font-bold text-foreground hover:text-red-600 dark:hover:text-red-400 line-clamp-1 transition-colors"
                     >
                       {video?.videotitle || "Untitled Video"}
                     </Link>
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>{video?.videochanel || "Channel"}</span>
                       <span>•</span>
                       <span>{formattedDate}</span>
@@ -391,10 +391,10 @@ export default function DownloadsPage() {
 
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       {getStatusBadge(record.status)}
-                      <span className="text-xs text-gray-400">Plan:</span>
+                      <span className="text-xs text-muted-foreground">Plan:</span>
                       {getPlanBadge(record.subscriptionPlan || "Free")}
                       {record.isDuplicate && (
-                        <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                        <span className="text-[10px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                           Duplicate (No Quota)
                         </span>
                       )}
@@ -415,7 +415,7 @@ export default function DownloadsPage() {
                       size="sm"
                       disabled={isLoading}
                       onClick={() => handleRetry(record._id)}
-                      className="rounded-full text-xs font-semibold border-red-300 text-red-700 hover:bg-red-50"
+                      className="rounded-full text-xs font-semibold border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
                     >
                       <RotateCcw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
                       Retry
@@ -426,7 +426,7 @@ export default function DownloadsPage() {
                       size="sm"
                       disabled={isLoading || !video?._id}
                       onClick={() => handleDownloadAgain(video?._id, record._id)}
-                      className="rounded-full text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-800"
+                      className="rounded-full text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground"
                     >
                       <Download className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
                       Download Again

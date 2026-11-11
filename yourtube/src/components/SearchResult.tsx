@@ -73,7 +73,7 @@ const SearchResult = ({ query }: any) => {
         {videos.map((video: any) => (
           <div key={video._id} className="flex flex-col sm:flex-row gap-4 group">
             <Link href={`/watch/${video._id}`} className="flex-shrink-0">
-              <div className="relative w-full sm:w-80 aspect-video bg-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="relative w-full sm:w-80 aspect-video bg-muted rounded-xl overflow-hidden shadow-sm border border-border">
                 <img
                   src={getThumbnailSrc(video)}
                   alt={video.videotitle}
@@ -90,12 +90,12 @@ const SearchResult = ({ query }: any) => {
 
             <div className="flex-1 min-w-0 py-1">
               <Link href={`/watch/${video._id}`}>
-                <h3 className="font-semibold text-lg line-clamp-2 text-gray-900 group-hover:text-blue-600 mb-1 leading-snug">
+                <h3 className="font-semibold text-lg line-clamp-2 text-foreground group-hover:text-red-600 dark:group-hover:text-red-400 mb-1 leading-snug transition-colors">
                   {video.videotitle}
                 </h3>
               </Link>
 
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                 <span>{formatViews(video.views)}</span>
                 <span>•</span>
                 <span>
@@ -105,17 +105,17 @@ const SearchResult = ({ query }: any) => {
 
               <Link
                 href={`/channel/${video.uploader}`}
-                className="flex items-center gap-2 mb-2 hover:text-blue-600 text-sm text-gray-700 font-medium"
+                className="flex items-center gap-2 mb-2 hover:text-red-600 dark:hover:text-red-400 text-sm text-foreground/80 font-medium transition-colors"
               >
-                <Avatar className="w-6 h-6 border">
-                  <AvatarFallback className="text-[10px] bg-red-100 text-red-700">
+                <Avatar className="w-6 h-6 border border-border">
+                  <AvatarFallback className="text-[10px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-bold">
                     {video.videochanel?.[0]?.toUpperCase() || "V"}
                   </AvatarFallback>
                 </Avatar>
                 <span>{video.videochanel || "Community Channel"}</span>
               </Link>
 
-              <p className="text-xs text-gray-600 line-clamp-2">
+              <p className="text-xs text-muted-foreground line-clamp-2">
                 High quality streaming video. Watch now in full resolution on YourTube.
               </p>
             </div>

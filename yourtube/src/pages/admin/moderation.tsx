@@ -466,7 +466,7 @@ export default function AdminModerationPage() {
                 className={`rounded-full text-xs font-bold gap-1.5 ${
                   activeTab === "reports"
                     ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 <Flag className="w-3.5 h-3.5" />
@@ -485,7 +485,7 @@ export default function AdminModerationPage() {
                 className={`rounded-full text-xs font-bold gap-1.5 ${
                   activeTab === "comments"
                     ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -499,7 +499,7 @@ export default function AdminModerationPage() {
                 className={`rounded-full text-xs font-bold gap-1.5 ${
                   activeTab === "logs"
                     ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 <History className="w-3.5 h-3.5" />
@@ -513,7 +513,7 @@ export default function AdminModerationPage() {
                 className={`rounded-full text-xs font-bold gap-1.5 ${
                   activeTab === "users"
                     ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 <UserX className="w-3.5 h-3.5" />

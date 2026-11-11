@@ -18,10 +18,10 @@ interface QuotaCardProps {
 export const QuotaCard: React.FC<QuotaCardProps> = ({ quota, loading = false }) => {
   if (loading || !quota) {
     return (
-      <div className="bg-white border rounded-2xl p-6 shadow-sm animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-        <div className="h-3 bg-gray-200 rounded w-full"></div>
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm animate-pulse space-y-4">
+        <div className="h-6 bg-muted rounded w-1/3"></div>
+        <div className="h-4 bg-muted rounded w-1/2"></div>
+        <div className="h-3 bg-muted rounded w-full"></div>
       </div>
     );
   }
@@ -30,10 +30,10 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({ quota, loading = false }) 
   const percentUsed = Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
 
   const planColors: Record<string, { badge: string; text: string }> = {
-    Free: { badge: "bg-gray-100 text-gray-700 border-gray-300", text: "text-gray-700" },
-    Bronze: { badge: "bg-amber-100 text-amber-800 border-amber-300", text: "text-amber-800" },
-    Silver: { badge: "bg-slate-200 text-slate-800 border-slate-300", text: "text-slate-800" },
-    Gold: { badge: "bg-yellow-100 text-yellow-800 border-yellow-400", text: "text-yellow-800" },
+    Free: { badge: "bg-muted text-muted-foreground border-border", text: "text-foreground" },
+    Bronze: { badge: "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700", text: "text-amber-600" },
+    Silver: { badge: "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-200 border-slate-300 dark:border-slate-700", text: "text-slate-600" },
+    Gold: { badge: "bg-yellow-100 dark:bg-yellow-950/80 text-yellow-900 dark:text-yellow-300 border-yellow-400 dark:border-yellow-600", text: "text-yellow-600" },
   };
 
   const currentTheme = planColors[plan] || planColors.Free;
@@ -43,11 +43,11 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({ quota, loading = false }) 
     : resetDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+    <div className="bg-card border border-border rounded-2xl p-6 shadow-sm transition-colors">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+            <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Download Quota
             </span>
             <span
@@ -57,8 +57,8 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({ quota, loading = false }) 
               {plan} Plan
             </span>
           </div>
-          <h2 className="text-2xl font-extrabold text-gray-900">
-            {remaining} <span className="text-base font-normal text-gray-500">of {limit} remaining today</span>
+          <h2 className="text-2xl font-extrabold text-foreground">
+            {remaining} <span className="text-base font-normal text-muted-foreground">of {limit} remaining today</span>
           </h2>
         </div>
 
@@ -74,19 +74,19 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({ quota, loading = false }) 
       </div>
 
       <div className="mt-4 space-y-2">
-        <div className="flex justify-between text-xs font-semibold text-gray-600">
+        <div className="flex justify-between text-xs font-semibold text-muted-foreground">
           <span>Used today: {used} video(s)</span>
           <span>{percentUsed}% consumed</span>
         </div>
-        <Progress value={percentUsed} className="h-2 bg-gray-200" />
+        <Progress value={percentUsed} className="h-2 bg-muted" />
       </div>
 
-      <div className="mt-4 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+      <div className="mt-4 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-gray-400" />
+          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
           <span>Resets daily at midnight ({formattedReset})</span>
         </div>
-        <div className="flex items-center gap-1.5 text-green-700 font-medium">
+        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Duplicates within 60 min don't count toward quota</span>
         </div>

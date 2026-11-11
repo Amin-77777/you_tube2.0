@@ -187,15 +187,15 @@ export default function SubscriptionDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="w-12 h-12 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium text-sm">Loading your subscription dashboard...</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="w-12 h-12 border-4 border-muted border-t-red-600 rounded-full animate-spin mb-4" />
+        <p className="text-muted-foreground font-medium text-sm">Loading your subscription dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/60 p-4 md:p-8">
+    <div className="min-h-screen bg-background text-foreground p-4 md:p-8 transition-colors">
       <Head>
         <title>Subscription Dashboard - YourTube</title>
       </Head>
@@ -205,7 +205,7 @@ export default function SubscriptionDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Home
@@ -216,7 +216,7 @@ export default function SubscriptionDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-full text-xs font-bold border-gray-300 hover:bg-gray-100"
+                className="rounded-full text-xs font-bold border-border hover:bg-muted"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-500" />
                 Browse All Plans
@@ -227,7 +227,7 @@ export default function SubscriptionDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-full text-xs font-semibold gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
+                className="rounded-full text-xs font-semibold gap-1.5 border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
               >
                 <Download className="w-3.5 h-3.5" />
                 My Downloads
@@ -238,17 +238,17 @@ export default function SubscriptionDashboard() {
 
         {/* Dashboard Title */}
         <div className="space-y-1">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+          <h1 className="text-3xl font-black text-foreground tracking-tight">
             Subscription & Billing Dashboard
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Monitor your tier entitlements, active validity countdown, auto-renewal preferences, and printable invoices.
           </p>
         </div>
 
         {/* 1. Active Tier Status Card */}
-        <div className="bg-white border border-gray-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+        <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-sm space-y-6 transition-colors">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
             <div className="flex items-center gap-4">
               <div
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-md ${
@@ -258,7 +258,7 @@ export default function SubscriptionDashboard() {
                     ? "bg-gradient-to-tr from-slate-200 to-slate-400 text-slate-900"
                     : planName === "Bronze"
                     ? "bg-gradient-to-tr from-amber-700 to-amber-500 text-white"
-                    : "bg-gray-100 text-gray-700"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 <TierIcon className="w-7 h-7" />
@@ -266,18 +266,18 @@ export default function SubscriptionDashboard() {
 
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-black text-gray-900">{planName} Plan</h2>
+                  <h2 className="text-2xl font-black text-foreground">{planName} Plan</h2>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       sub?.status === "ACTIVE"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
+                        ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
+                        : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300"
                     }`}
                   >
                     {sub?.status || "ACTIVE"}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Billing Cycle: <strong className="capitalize">{sub?.duration || "Monthly"}</strong>
                 </p>
               </div>
@@ -296,7 +296,7 @@ export default function SubscriptionDashboard() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowCancelModal(true)}
-                  className="rounded-full text-xs font-semibold text-gray-600 hover:text-red-600 border-gray-300"
+                  className="rounded-full text-xs font-semibold text-muted-foreground hover:text-red-600 border-border"
                 >
                   Cancel Plan
                 </Button>
@@ -307,32 +307,32 @@ export default function SubscriptionDashboard() {
           {/* Details Grid: Countdown & Auto-Renew */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
             {/* Validity Countdown */}
-            <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 space-y-2">
-              <div className="flex items-center gap-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
+            <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
                 <Clock className="w-4 h-4 text-red-600" />
                 <span>Validity Countdown</span>
               </div>
 
               {countdown ? (
                 <div>
-                  <p className="text-lg font-black text-gray-900">{countdown.text}</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
+                  <p className="text-lg font-black text-foreground">{countdown.text}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     Expires on: {new Date(sub.expiryDate).toLocaleDateString()}
                   </p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-lg font-black text-gray-900">Always Active</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Standard free tier has no expiration.</p>
+                  <p className="text-lg font-black text-foreground">Always Active</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Standard free tier has no expiration.</p>
                 </div>
               )}
             </div>
 
             {/* Auto-Renewal Status & Toggle */}
-            <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 space-y-2">
+            <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
-                  <CreditCard className="w-4 h-4 text-gray-700" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                  <CreditCard className="w-4 h-4 text-muted-foreground" />
                   <span>Auto-Renewal</span>
                 </div>
                 {isPaidPlan && (
@@ -340,13 +340,13 @@ export default function SubscriptionDashboard() {
                     type="button"
                     disabled={togglingAutoRenew}
                     onClick={handleToggleAutoRenew}
-                    className="text-gray-700 hover:text-gray-900 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                     title={sub?.autoRenew ? "Disable Auto-Renew" : "Enable Auto-Renew"}
                   >
                     {sub?.autoRenew ? (
                       <ToggleRight className="w-7 h-7 text-emerald-600" />
                     ) : (
-                      <ToggleLeft className="w-7 h-7 text-gray-400" />
+                      <ToggleLeft className="w-7 h-7 text-muted-foreground/60" />
                     )}
                   </button>
                 )}

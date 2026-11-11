@@ -9,6 +9,7 @@ import {
   logout,
   logoutAll,
   updateprofile,
+  getChannelProfile,
 } from "../controllers/auth.js";
 import {
   getUserPreferences,
@@ -33,6 +34,11 @@ routes.patch("/comment-preferences", requireAuth, updateUserPreferences);
 routes.post("/logout", requireAuth, logout);
 routes.post("/logout-all", requireAuth, logoutAll);
 
+routes.get("/channel/:id", getChannelProfile);
+routes.get("/profile/:id", getChannelProfile);
+
 routes.patch("/update/:id", updateprofile);
+routes.put("/update/:id", updateprofile);
+routes.post("/update/:id", updateprofile);
 
 export default routes;

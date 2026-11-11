@@ -158,12 +158,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    if (themePreference === "auto") {
+    if (effectiveTheme === "dark") {
       setThemePreference("light");
-    } else if (themePreference === "light") {
-      setThemePreference("dark");
     } else {
-      setThemePreference("auto");
+      setThemePreference("dark");
     }
   };
 

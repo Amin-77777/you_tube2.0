@@ -98,7 +98,7 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
         <Link href={`/watch/${currentVideo?._id}`} className="block">
           <div className="space-y-3">
             {/* Thumbnail Container */}
-            <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-200 shadow-sm transition-all group-hover:shadow-md">
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all group-hover:shadow-md">
               {/* Thumbnail Image */}
               <img
                 src={imageError ? fallbackThumbnail : thumbnailSrc}
@@ -167,19 +167,19 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
 
             {/* Video Metadata */}
             <div className="flex gap-3 items-start">
-              <Avatar className="w-9 h-9 flex-shrink-0 mt-0.5 border">
-                <AvatarFallback className="bg-red-100 text-red-700 font-semibold text-xs">
+              <Avatar className="w-9 h-9 flex-shrink-0 mt-0.5 border border-border">
+                <AvatarFallback className="bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 font-semibold text-xs">
                   {currentVideo?.videochanel?.[0]?.toUpperCase() || "V"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm line-clamp-2 text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
+                <h3 className="font-semibold text-sm line-clamp-2 text-foreground group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors leading-snug">
                   {currentVideo?.videotitle || "Untitled Video"}
                 </h3>
-                <p className="text-xs text-gray-600 mt-1 font-medium truncate">
+                <p className="text-xs text-muted-foreground mt-1 font-medium truncate">
                   {currentVideo?.videochanel || "Community Channel"}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-muted-foreground/80 mt-0.5">
                   {formatViews(currentVideo?.views)} •{" "}
                   {currentVideo?.createdAt
                     ? formatDistanceToNow(new Date(currentVideo.createdAt)) + " ago"

@@ -327,33 +327,33 @@ export default function SubscriptionsPage() {
     { border: string; bg: string; badgeBg: string; button: string; tag: string }
   > = {
     Free: {
-      border: "border-gray-200",
-      bg: "bg-white",
-      badgeBg: "bg-gray-100 text-gray-800",
-      button: "bg-gray-100 hover:bg-gray-200 text-gray-800",
-      tag: "text-gray-600",
+      border: "border-border",
+      bg: "bg-card text-foreground",
+      badgeBg: "bg-muted text-muted-foreground",
+      button: "bg-muted hover:bg-muted/80 text-foreground",
+      tag: "text-muted-foreground",
     },
     Bronze: {
-      border: "border-amber-300 shadow-sm",
-      bg: "bg-gradient-to-b from-amber-50/40 to-white",
-      badgeBg: "bg-amber-100 text-amber-800",
+      border: "border-amber-400/50 shadow-sm",
+      bg: "bg-card text-foreground",
+      badgeBg: "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300",
       button: "bg-amber-600 hover:bg-amber-700 text-white font-bold",
-      tag: "text-amber-800",
+      tag: "text-amber-600 dark:text-amber-400",
     },
     Silver: {
-      border: "border-slate-300 shadow-sm",
-      bg: "bg-gradient-to-b from-slate-50/50 to-white",
-      badgeBg: "bg-slate-200 text-slate-800",
-      button: "bg-slate-800 hover:bg-slate-900 text-white font-bold",
-      tag: "text-slate-800",
+      border: "border-slate-300 dark:border-slate-700 shadow-sm",
+      bg: "bg-card text-foreground",
+      badgeBg: "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-200",
+      button: "bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold",
+      tag: "text-slate-600 dark:text-slate-400",
     },
     Gold: {
       border: "border-yellow-400 ring-2 ring-yellow-400/30 shadow-lg",
-      bg: "bg-gradient-to-b from-yellow-50/60 to-white",
+      bg: "bg-card text-foreground",
       badgeBg: "bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black",
       button:
         "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-black font-black shadow-md shadow-yellow-500/20",
-      tag: "text-yellow-800",
+      tag: "text-yellow-600 dark:text-yellow-400",
     },
   };
 
@@ -413,16 +413,16 @@ export default function SubscriptionsPage() {
           <Sparkles className="w-3.5 h-3.5" />
           <span>Razorpay Test Mode Integration</span>
         </div>
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight">
+        <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
           Choose Your Perfect Plan
         </h1>
-        <p className="text-sm md:text-base text-gray-600 max-w-xl mx-auto">
+        <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto">
           Unlock high-definition 4K streaming, generous daily download quotas, exclusive premium videos, and ad-free viewing.
         </p>
 
         {/* Duration Selection Pill Tabs */}
         <div className="pt-4 flex justify-center">
-          <div className="inline-flex p-1.5 bg-gray-100 border border-gray-200 rounded-full shadow-inner">
+          <div className="inline-flex p-1.5 bg-muted border border-border rounded-full shadow-inner">
             {DURATIONS.map((dur) => (
               <button
                 key={dur.key}
@@ -430,8 +430,8 @@ export default function SubscriptionsPage() {
                 onClick={() => setSelectedDuration(dur.key)}
                 className={`relative px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                   selectedDuration === dur.key
-                    ? "bg-white text-gray-900 shadow-md"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "bg-card text-foreground shadow-md"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span>{dur.name}</span>
@@ -520,65 +520,65 @@ export default function SubscriptionsPage() {
                   {/* Plan Header */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-black text-xl text-gray-900 block">{plan.name}</span>
-                      <span className="text-[11px] text-gray-500 font-medium">Tier {plan.tier}</span>
+                      <span className="font-black text-xl text-foreground block">{plan.name}</span>
+                      <span className="text-[11px] text-muted-foreground font-medium">Tier {plan.tier}</span>
                     </div>
-                    <div className="p-2.5 rounded-2xl bg-white shadow-sm border border-gray-100">
-                      <Icon className="w-5 h-5 text-gray-800" />
+                    <div className="p-2.5 rounded-2xl bg-card shadow-sm border border-border">
+                      <Icon className="w-5 h-5 text-foreground" />
                     </div>
                   </div>
 
                   {/* Price Header */}
                   <div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl md:text-4xl font-black text-gray-900">
+                      <span className="text-3xl md:text-4xl font-black text-foreground">
                         {totalPrice === 0 ? "₹0" : `₹${totalPrice}`}
                       </span>
                       {totalPrice > 0 && (
-                        <span className="text-xs text-gray-500 font-semibold">
+                        <span className="text-xs text-muted-foreground font-semibold">
                           /{selectedDuration === "monthly" ? "mo" : selectedDuration}
                         </span>
                       )}
                     </div>
 
                     {selectedDuration !== "monthly" && totalPrice > 0 && (
-                      <p className="text-[11px] text-emerald-600 font-bold mt-0.5">
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
                         Equivalent to ₹{monthlyEq}/month
                       </p>
                     )}
 
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{plan.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{plan.description}</p>
                   </div>
 
                   {/* Daily Limits Summary Card */}
-                  <div className="bg-white/80 border rounded-2xl p-3 space-y-1.5 shadow-xs">
+                  <div className="bg-muted/40 border border-border rounded-2xl p-3 space-y-1.5 shadow-xs">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500 font-semibold">Downloads:</span>
-                      <span className="font-extrabold text-red-600">
+                      <span className="text-muted-foreground font-semibold">Downloads:</span>
+                      <span className="font-extrabold text-red-600 dark:text-red-400">
                         {plan.dailyDownloadLimit} / day
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500 font-semibold">Daily Watch:</span>
-                      <span className="font-extrabold text-gray-900">
+                      <span className="text-muted-foreground font-semibold">Daily Watch:</span>
+                      <span className="font-extrabold text-foreground">
                         {plan.dailyWatchLimitMinutes >= 9999
                           ? "Unlimited"
                           : `${plan.dailyWatchLimitMinutes} mins`}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500 font-semibold">Quality:</span>
-                      <span className="font-extrabold text-gray-900">
+                      <span className="text-muted-foreground font-semibold">Quality:</span>
+                      <span className="font-extrabold text-foreground">
                         {plan.maxStreamingQuality}
                       </span>
                     </div>
                   </div>
 
                   {/* Feature Checklist */}
-                  <ul className="space-y-2 pt-1 text-xs text-gray-700">
+                  <ul className="space-y-2 pt-1 text-xs text-foreground/80">
                     {plan.features?.map((feat: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                         <span>{feat}</span>
                       </li>
                     ))}
@@ -586,7 +586,7 @@ export default function SubscriptionsPage() {
                 </div>
 
                 {/* Bottom CTA Button */}
-                <div className="pt-6 mt-4 border-t border-gray-100">
+                <div className="pt-6 mt-4 border-t border-border">
                   <Button
                     onClick={() => handleSelectPlan(key)}
                     disabled={isCurrent || isProcessing}

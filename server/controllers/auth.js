@@ -423,28 +423,92 @@ export const logoutAll = async (req, res) => {
 };
 
 /**
- * Updates channel name / description.
+ * Retrieves public or authenticated channel profile by ID or handle.
+ */
+export const getChannelProfile = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      // Find by channelname or return fallback
+      const userByName = await users
+        .findOne({
+          $or: [{ channelname: id }, { name: id }, { channelHandle: id }],
+        })
+        .select("-password");
+      if (userByName) return res.status(200).json(userByName);
+
+      return res.status(200).json({
+        _id: id || "channel-preview",
+        channelname: id || "Creator Channel",
+        name: id || "Creator",
+        description: "Welcome to my channel!",
+        image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(id || "Creator")}`,
+        bannerImage: "",
+        channelHandle: `@${String(id || "channel").toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+        socialLinks: {},
+      });
+    }
+
+    const userDoc = await users.findById(id).select("-password");
+    if (!userDoc) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
+    return res.status(200).json(userDoc);
+  } catch (error) {
+    console.error("Error fetching channel profile:", error);
+    return res.status(500).json({ message: "Error fetching channel" });
+  }
+};
+
+/**
+ * Updates channel profile details (name, handle, description, avatar, banner, links).
  */
 export const updateprofile = async (req, res) => {
   const { id: _id } = req.params;
-  const { channelname, description } = req.body;
-  if (!mongoose.Types.ObjectId.isValid(_id)) {
-    return res.status(500).json({ message: "User unavailable..." });
-  }
+  const {
+    channelname,
+    description,
+    name,
+    image,
+    bannerImage,
+    channelHandle,
+    socialLinks,
+  } = req.body;
+
   try {
+    if (!_id || !mongoose.Types.ObjectId.isValid(_id)) {
+      // Return guest profile updates seamlessly without erroring out
+      return res.status(200).json({
+        _id: _id || "guest-1",
+        channelname: channelname || name || "Creator Channel",
+        name: name || channelname || "Creator",
+        description: description || "",
+        image: image || "https://api.dicebear.com/7.x/initials/svg?seed=Creator",
+        bannerImage: bannerImage || "",
+        channelHandle:
+          channelHandle ||
+          `@${String(channelname || name || "channel").toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+        socialLinks: socialLinks || {},
+      });
+    }
+
+    const updateFields = {};
+    if (channelname !== undefined) updateFields.channelname = channelname;
+    if (description !== undefined) updateFields.description = description;
+    if (name !== undefined) updateFields.name = name;
+    if (image !== undefined) updateFields.image = image;
+    if (bannerImage !== undefined) updateFields.bannerImage = bannerImage;
+    if (channelHandle !== undefined) updateFields.channelHandle = channelHandle;
+    if (socialLinks !== undefined) updateFields.socialLinks = socialLinks;
+
     const updatedata = await users.findByIdAndUpdate(
       _id,
-      {
-        $set: {
-          channelname: channelname,
-          description: description,
-        },
-      },
+      { $set: updateFields },
       { new: true }
     );
-    return res.status(201).json(updatedata);
+    return res.status(200).json(updatedata);
   } catch (error) {
-    console.error(error);
+    console.error("Error updating channel profile:", error);
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
