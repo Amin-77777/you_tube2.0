@@ -18,6 +18,7 @@ import {
   Home,
   LogOut,
   Shield,
+  ShieldAlert,
   Sun,
   Moon,
   Sparkles,
@@ -285,6 +286,14 @@ const Header = () => {
                           Account Security & Theme
                         </Link>
                       </DropdownMenuItem>
+                      {(user?.role === "admin" || user?.role === "moderator") && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/moderation" className="flex items-center gap-2 font-medium text-purple-600 dark:text-purple-400">
+                            <ShieldAlert className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            Admin Moderation
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout}>Sign out</DropdownMenuItem>
                     </DropdownMenuContent>

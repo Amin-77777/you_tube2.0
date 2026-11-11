@@ -12,6 +12,8 @@ import commentroutes from "./routes/comment.js";
 import downloadroutes from "./routes/download.js";
 import subscriptionroutes from "./routes/subscription.js";
 import securityroutes from "./routes/security.js";
+import adminroutes from "./routes/admin.js";
+import notificationroutes from "./routes/notification.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { setupSocketIO } from "./socketHandler.js";
@@ -287,8 +289,13 @@ app.use("/like", likeroutes);
 app.use("/watch", watchlaterroutes);
 app.use("/history", historyrroutes);
 app.use("/comment", commentroutes);
+app.use("/api/comments", commentroutes);
 app.use("/download", downloadroutes);
 app.use("/subscription", subscriptionroutes);
+app.use("/admin", adminroutes);
+app.use("/api/admin", adminroutes);
+app.use("/api/notifications", notificationroutes);
+app.use("/notifications", notificationroutes);
 
 // Global JSON error handling middleware
 app.use((err, req, res, next) => {

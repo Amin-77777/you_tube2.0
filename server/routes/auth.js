@@ -10,6 +10,10 @@ import {
   logoutAll,
   updateprofile,
 } from "../controllers/auth.js";
+import {
+  getUserPreferences,
+  updateUserPreferences,
+} from "../controllers/userPreferences.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const routes = express.Router();
@@ -21,6 +25,10 @@ routes.post("/cancel-otp", cancelOtp);
 
 routes.get("/preferences", requireAuth, getPreferences);
 routes.patch("/preferences", requireAuth, updatePreferences);
+
+routes.get("/comment-preferences", requireAuth, getUserPreferences);
+routes.put("/comment-preferences", requireAuth, updateUserPreferences);
+routes.patch("/comment-preferences", requireAuth, updateUserPreferences);
 
 routes.post("/logout", requireAuth, logout);
 routes.post("/logout-all", requireAuth, logoutAll);

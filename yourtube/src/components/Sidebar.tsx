@@ -10,6 +10,7 @@ import {
   Download,
   CreditCard,
   Shield,
+  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -88,6 +89,14 @@ const Sidebar = () => {
                   Security & Theme
                 </Button>
               </Link>
+              {(user?.role === "admin" || user?.role === "moderator") && (
+                <Link href="/admin/moderation">
+                  <Button variant="ghost" className="w-full justify-start text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-950/40">
+                    <ShieldAlert className="w-5 h-5 mr-3 text-purple-600 dark:text-purple-400" />
+                    Admin Moderation
+                  </Button>
+                </Link>
+              )}
               {user?.channelname ? (
                 <Link href={`/channel/${user.id || user._id}`}>
                   <Button variant="ghost" className="w-full justify-start">

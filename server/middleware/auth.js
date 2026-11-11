@@ -4,6 +4,7 @@ import User from "../Modals/Auth.js";
 import { validateSession } from "../services/sessionService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "yourtube_jwt_super_secret_key_2026";
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "yourtube_admin_secret_key_2026";
 
 /**
  * Middleware to authenticate requests.
@@ -123,6 +124,36 @@ export const optionalAuth = async (req, res, next) => {
 };
 
 /**
+ * Require Administrator role or secret key
+ */
+export const requireAdmin = async (req, res, next) => {
+  // Allow secret admin key bypass in headers (e.g. for CI/CD or admin tools)
+  const adminKey = req.headers["x-admin-key"];
+  if (adminKey && adminKey === ADMIN_SECRET_KEY) {
+    return optionalAuth(req, res, next);
+  }
+
+  // First authenticate
+  await requireAuth(req, res, async () => {
+    if (req.user?.role === "admin" || req.user?.role === "moderator") {
+      return next();
+    }
+
+    // If no admin user exists at all in the database yet, grant first logged in user temporary admin access
+    const adminCount = await User.countDocuments({ role: "admin" });
+    if (adminCount === 0 && req.user) {
+      req.user.role = "admin";
+      await req.user.save();
+      return next();
+    }
+
+    return res.status(403).json({
+      message: "Forbidden: Administrator or moderator access required.",
+    });
+  });
+};
+
+/**
  * Generates a signed JWT token for a user.
  */
 export function generateToken(userDoc, sid = null) {
@@ -130,6 +161,7 @@ export function generateToken(userDoc, sid = null) {
     id: userDoc._id,
     email: userDoc.email,
     name: userDoc.name,
+    role: userDoc.role || "user",
   };
   if (sid) {
     payload.sid = sid;
