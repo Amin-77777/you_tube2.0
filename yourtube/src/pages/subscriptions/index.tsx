@@ -216,7 +216,7 @@ export default function SubscriptionsPage() {
         key: keyId,
         amount: effectivePaise, // Razorpay SDK requires smallest subunit (paise)
         currency: currency || "INR",
-        name: "YourTube Premium",
+        name: "YouTube 2.0 Premium",
         description: `${planKey} Plan (${selectedDuration.toUpperCase()})`,
         image: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=128&auto=format&fit=crop&q=80",
         order_id: orderId,
@@ -240,7 +240,7 @@ export default function SubscriptionsPage() {
         },
         prefill: {
           name: userInfo?.name || user?.name || "Subscriber",
-          email: userInfo?.email || user?.email || "subscriber@yourtube.com",
+          email: userInfo?.email || user?.email || "subscriber@youtube2.com",
         },
         notes: {
           plan: planKey,
@@ -360,7 +360,7 @@ export default function SubscriptionsPage() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-10">
       <Head>
-        <title>Subscription Plans - YourTube Premium</title>
+        <title>Subscription Plans - YouTube 2.0 Premium</title>
       </Head>
 
       {/* Top Navigation */}

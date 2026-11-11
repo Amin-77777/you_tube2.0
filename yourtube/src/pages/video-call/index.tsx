@@ -113,7 +113,7 @@ export default function VideoCallLobby() {
   return (
     <div className="flex-1 min-h-[calc(100vh-60px)] bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900 p-6 md:p-12 select-none">
       <Head>
-        <title>Video Calling | YourTube</title>
+        <title>Video Calling | YouTube 2.0 Meet</title>
       </Head>
 
       <div className="max-w-6xl mx-auto">

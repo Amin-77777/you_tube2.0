@@ -264,7 +264,7 @@ export default function SecurityDashboardPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 min-h-[85vh]">
       <Head>
-        <title>Account Security & Theme Settings - YourTube</title>
+        <title>Account Security & Theme Settings - YouTube 2.0</title>
       </Head>
 
       {/* Header Banner */}

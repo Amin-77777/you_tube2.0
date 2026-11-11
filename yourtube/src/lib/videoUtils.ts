@@ -252,7 +252,7 @@ export const DEFAULT_FALLBACK_VIDEOS = [
   },
   {
     _id: "default-8",
-    videotitle: "Introduction to YourTube",
+    videotitle: "Introduction to YouTube 2.0",
     filepath: "https://vjs.zencdn.net/v/oceans.mp4",
     thumbnail: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=80",
     videochanel: "Official Channel",

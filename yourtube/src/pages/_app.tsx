@@ -17,7 +17,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <ThemeProvider>
       <UserProvider>
         <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
-          <title>Your-Tube Clone</title>
+          <title>YouTube 2.0 - Video Streaming & Creation Platform</title>
           {!isVideoRoom && <Header />}
           <Toaster />
           <div className="flex w-full min-w-0 flex-1">

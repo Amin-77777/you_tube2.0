@@ -7,6 +7,7 @@ import ChannelVideos from "@/components/ChannelVideos";
 import VideoUploader from "@/components/VideoUploader";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
+import { toast } from "sonner";
 
 const ChannelPage = () => {
   const router = useRouter();
@@ -53,7 +54,7 @@ const ChannelPage = () => {
             activeChan = {
               _id: rawId,
               channelname: rawId || "Creator Channel",
-              description: "Welcome to my official channel on YourTube!",
+              description: "Welcome to my official channel on YouTube 2.0!",
               image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(rawId || "Creator")}`,
             };
           }
@@ -92,11 +93,27 @@ const ChannelPage = () => {
 
   const activeChannel = isOwner ? user || channelData : channelData;
 
+  const handleDeleteVideo = async (videoId: string) => {
+    try {
+      await axiosInstance.delete(`/video/delete/${videoId}`);
+      setVideos((prev) => prev.filter((v) => (v._id || v.id) !== videoId));
+      toast.success("Video deleted successfully from your channel.");
+    } catch (err: any) {
+      try {
+        await axiosInstance.post(`/video/delete/${videoId}`);
+        setVideos((prev) => prev.filter((v) => (v._id || v.id) !== videoId));
+        toast.success("Video deleted successfully from your channel.");
+      } catch (err2) {
+        toast.error("Failed to delete video. Please try again.");
+      }
+    }
+  };
+
   return (
     <div className="flex-1 min-h-screen bg-background text-foreground transition-colors duration-200">
       <Head>
         <title>
-          {activeChannel?.channelname || "Channel"} - YourTube
+          {activeChannel?.channelname || "Channel"} - YouTube 2.0
         </title>
       </Head>
 
@@ -116,7 +133,11 @@ const ChannelPage = () => {
         )}
 
         <div className="px-4 pb-12">
-          <ChannelVideos videos={videos} />
+          <ChannelVideos
+            videos={videos}
+            isOwner={Boolean(isOwner)}
+            onDeleteVideo={handleDeleteVideo}
+          />
         </div>
       </div>
     </div>

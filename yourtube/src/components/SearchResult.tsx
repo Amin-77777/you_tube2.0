@@ -116,7 +116,7 @@ const SearchResult = ({ query }: any) => {
               </Link>
 
               <p className="text-xs text-muted-foreground line-clamp-2">
-                High quality streaming video. Watch now in full resolution on YourTube.
+                High quality streaming video. Watch now in full resolution on YouTube 2.0.
               </p>
             </div>
           </div>

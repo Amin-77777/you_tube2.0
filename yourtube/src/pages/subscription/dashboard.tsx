@@ -197,7 +197,7 @@ export default function SubscriptionDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 transition-colors">
       <Head>
-        <title>Subscription Dashboard - YourTube</title>
+        <title>Subscription Dashboard - YouTube 2.0</title>
       </Head>
 
       <div className="max-w-6xl mx-auto space-y-8">
@@ -681,7 +681,7 @@ export default function SubscriptionDashboard() {
                     <div className="w-7 h-7 bg-red-600 text-white rounded-lg flex items-center justify-center font-black text-sm">
                       Y
                     </div>
-                    <span className="font-black text-xl text-gray-900 tracking-tight">YourTube 2.0</span>
+                    <span className="font-black text-xl text-gray-900 tracking-tight">YouTube 2.0</span>
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1">Official Payment Receipt & Subscription Invoice</p>
                 </div>
@@ -725,7 +725,7 @@ export default function SubscriptionDashboard() {
                 <tbody className="divide-y divide-gray-100">
                   <tr>
                     <td className="py-3 font-bold text-gray-900">
-                      YourTube {selectedInvoice.planName} Plan Subscription
+                      YouTube 2.0 {selectedInvoice.planName} Plan Subscription
                     </td>
                     <td className="py-3 text-center capitalize">{selectedInvoice.duration}</td>
                     <td className="py-3 text-right font-bold text-gray-900">

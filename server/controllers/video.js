@@ -137,7 +137,7 @@ export const SAMPLE_VIDEOS = [
     accessLevel: "bronze",
   },
   {
-    videotitle: "Introduction to YourTube",
+    videotitle: "Introduction to YouTube 2.0",
     filename: "oceans.mp4",
     filetype: "video/mp4",
     filepath: "https://vjs.zencdn.net/v/oceans.mp4",
@@ -352,6 +352,55 @@ export const updateVideo = async (req, res) => {
   } catch (error) {
     console.error("Update video error:", error);
     return res.status(500).json({ message: "Failed to update video", error: error.message });
+  }
+};
+
+export const deleteVideo = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!id) {
+      return res.status(400).json({ message: "Video ID is required" });
+    }
+
+    let videoDoc = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      videoDoc = await video.findById(id);
+    } else {
+      videoDoc = await video.findOne({ filename: id });
+    }
+
+    if (!videoDoc) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    // Clean up local files if stored in uploads directory
+    if (videoDoc.filepath && typeof videoDoc.filepath === "string" && videoDoc.filepath.startsWith("uploads/")) {
+      const localVideoPath = path.resolve(__dirname, "..", videoDoc.filepath);
+      if (fs.existsSync(localVideoPath)) {
+        try {
+          fs.unlinkSync(localVideoPath);
+        } catch (_) {}
+      }
+    }
+    if (videoDoc.thumbnail && typeof videoDoc.thumbnail === "string" && videoDoc.thumbnail.startsWith("uploads/")) {
+      const localThumbPath = path.resolve(__dirname, "..", videoDoc.thumbnail);
+      if (fs.existsSync(localThumbPath)) {
+        try {
+          fs.unlinkSync(localThumbPath);
+        } catch (_) {}
+      }
+    }
+
+    await video.deleteOne({ _id: videoDoc._id });
+
+    return res.status(200).json({
+      success: true,
+      message: "Video deleted successfully",
+      deletedId: videoDoc._id,
+    });
+  } catch (error) {
+    console.error("Delete video error:", error);
+    return res.status(500).json({ message: "Failed to delete video", error: error.message });
   }
 };
 

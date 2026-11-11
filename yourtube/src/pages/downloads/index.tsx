@@ -217,7 +217,7 @@ export default function DownloadsPage() {
     return (
       <div className="flex-1 p-6 md:p-10 max-w-5xl">
         <Head>
-          <title>Downloads - YourTube</title>
+          <title>Downloads - YouTube 2.0</title>
         </Head>
         <div className="bg-card border border-border rounded-2xl p-10 text-center shadow-sm max-w-lg mx-auto mt-12 transition-colors">
           <div className="w-16 h-16 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -229,7 +229,7 @@ export default function DownloadsPage() {
           </p>
           <Link href="/signin?redirect=/downloads">
             <Button className="bg-red-600 hover:bg-red-700 text-white rounded-full px-6 font-semibold shadow-sm">
-              Sign In to YourTube
+              Sign In to YouTube 2.0
             </Button>
           </Link>
         </div>
@@ -240,7 +240,7 @@ export default function DownloadsPage() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <Head>
-        <title>Downloads & Quota - YourTube</title>
+        <title>Downloads & Quota - YouTube 2.0</title>
       </Head>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

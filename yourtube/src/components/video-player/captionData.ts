@@ -110,13 +110,13 @@ export const REALTIME_CAPTION_TRACKS: VideoCaptionTrack[] = [
     ],
   },
 
-  // 6. Introduction to YourTube
+  // 6. Introduction to YouTube 2.0
   {
     videoIdOrKeyword: "intro",
     language: "en",
     label: "English",
     cues: [
-      { start: 0, end: 5, text: "Welcome to YourTube 2.0, the next-generation video streaming platform!" },
+      { start: 0, end: 5, text: "Welcome to YouTube 2.0, the next-generation video streaming platform!" },
       { start: 5, end: 12, text: "Enjoy seamless 4K playback, customized HTML5 controls, and offline downloads." },
       { start: 12, end: 20, text: "Support your favorite channels, save watch history, and connect with creators." },
       { start: 20, end: 30, text: "Start streaming your favorite content today!" },

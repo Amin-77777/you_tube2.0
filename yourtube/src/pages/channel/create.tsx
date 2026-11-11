@@ -189,7 +189,7 @@ export default function CreateOrEditChannelPage() {
 
         toast.success(
           activeTab === "create"
-            ? "Channel created successfully! Welcome to YourTube Creators."
+            ? "Channel created successfully! Welcome to YouTube 2.0 Creators."
             : "Channel profile updated successfully!"
         );
 
@@ -212,7 +212,7 @@ export default function CreateOrEditChannelPage() {
     <div className="min-h-screen bg-background text-foreground p-4 sm:p-6 md:p-10 transition-colors">
       <Head>
         <title>
-          {activeTab === "create" ? "Create Channel" : "Edit Channel Profile"} - YourTube
+          {activeTab === "create" ? "Create Channel" : "Edit Channel Profile"} - YouTube 2.0
         </title>
       </Head>
 
@@ -254,7 +254,7 @@ export default function CreateOrEditChannelPage() {
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground">
                 {activeTab === "create"
-                  ? "Launch your creator presence on YourTube. Customize your channel profile and branding."
+                  ? "Launch your creator presence on YouTube 2.0. Customize your channel profile and branding."
                   : "Modify your channel profile, change banner & avatar images, handle, and contact information."}
               </p>
             </div>
@@ -396,7 +396,7 @@ export default function CreateOrEditChannelPage() {
                   className="rounded-xl bg-muted/40 border-border text-foreground font-mono text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Your public handle URL: yourtube.com/{channelHandle || "@handle"}
+                  Your public handle URL: youtube2.com/{channelHandle || "@handle"}
                 </p>
               </div>
             </div>

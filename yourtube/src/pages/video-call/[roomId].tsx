@@ -18,7 +18,7 @@ export default function VideoCallRoomPage() {
   return (
     <>
       <Head>
-        <title>{`Call ${roomId} | YourTube Meet`}</title>
+        <title>{`Call ${roomId} | YouTube 2.0 Meet`}</title>
       </Head>
       <VideoCall initialRoomId={roomId} />
     </>

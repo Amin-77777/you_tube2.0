@@ -206,7 +206,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
           <div>
             <h1 className="text-2xl font-bold">You left the meeting</h1>
             <p className="text-sm text-gray-400 mt-1">
-              Thank you for using YourTube Video Calling.
+              Thank you for using YouTube 2.0 Video Meet.
             </p>
           </div>
 
@@ -245,7 +245,7 @@ export default function VideoCall({ initialRoomId }: VideoCallProps) {
               onClick={() => router.push("/")}
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Return to YouTube Home</span>
+              <span>Return to Home</span>
             </Button>
           </div>
         </div>

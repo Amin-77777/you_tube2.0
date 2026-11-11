@@ -379,9 +379,18 @@ export default function AdminModerationPage() {
                     required
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Default development key: <code>yourtube_admin_secret_key_2026</code>
-                </p>
+                <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
+                  <span>
+                    Evaluator Demo Key: <code className="text-red-600 dark:text-red-400 font-mono font-bold">yourtube_admin_secret_key_2026</code>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAdminKey("yourtube_admin_secret_key_2026")}
+                    className="text-[10px] text-blue-500 hover:underline font-semibold"
+                  >
+                    Auto-Fill
+                  </button>
+                </div>
               </div>
 
               <Button
@@ -409,7 +418,7 @@ export default function AdminModerationPage() {
   return (
     <>
       <Head>
-        <title>Admin Moderation Dashboard | YourTube</title>
+        <title>Admin Moderation Dashboard | YouTube 2.0</title>
       </Head>
 
       <div className="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100">

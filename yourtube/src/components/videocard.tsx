@@ -5,14 +5,24 @@ import { useRouter } from "next/router";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { getThumbnailSrc, getUniqueFallbackThumbnail, formatViews } from "@/lib/videoUtils";
-import { Play, Image as ImageIcon, Download } from "lucide-react";
+import { Play, Image as ImageIcon, Download, Trash2 } from "lucide-react";
 import EditThumbnailModal from "./EditThumbnailModal";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
 import { getBackendUrl } from "@/lib/backendUrl";
 import { toast } from "sonner";
 
-export default function VideoCard({ video, onVideoUpdate }: { video: any; onVideoUpdate?: (v: any) => void }) {
+export default function VideoCard({
+  video,
+  onVideoUpdate,
+  canDelete = false,
+  onDelete,
+}: {
+  video: any;
+  onVideoUpdate?: (v: any) => void;
+  canDelete?: boolean;
+  onDelete?: (v: any) => void;
+}) {
   const router = useRouter();
   const { user } = useUser();
   const [currentVideo, setCurrentVideo] = useState(video);
@@ -163,6 +173,23 @@ export default function VideoCard({ video, onVideoUpdate }: { video: any; onVide
                 <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
                 <span>Thumbnail</span>
               </button>
+
+              {/* Quick Delete Video Button on Hover */}
+              {(canDelete || onDelete) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onDelete) onDelete(currentVideo);
+                  }}
+                  title="Delete Video"
+                  className="absolute bottom-2 left-2 bg-red-600 hover:bg-red-700 text-white text-xs px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shadow-md z-10 font-bold"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              )}
             </div>
 
             {/* Video Metadata */}

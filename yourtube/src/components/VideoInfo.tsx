@@ -12,7 +12,16 @@ import {
   Image as ImageIcon,
   Bell,
   Check,
+  Trash2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/router";
 import { toast } from "sonner";
@@ -34,6 +43,8 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
   const [downloading, setDownloading] = useState(false);
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const channelIdentifier =
     video?.channelId ||
@@ -45,6 +56,35 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
 
   const { isSubscribed, toggleSubscription, isLoading: isSubLoading } =
     useChannelSubscription(channelIdentifier, channelDisplayName, user?._id || user?.id);
+
+  const isVideoOwner =
+    user &&
+    (user._id === currentVideo?.uploader ||
+      user.id === currentVideo?.uploader ||
+      user.role === "admin" ||
+      (user.channelname &&
+        currentVideo?.videochanel &&
+        user.channelname.toLowerCase() === currentVideo.videochanel.toLowerCase()));
+
+  const handleDeleteVideo = async () => {
+    try {
+      setIsDeleting(true);
+      await axiosInstance.delete(`/video/delete/${currentVideo?._id}`);
+      toast.success("Video deleted successfully.");
+      router.push(`/channel/${encodeURIComponent(channelIdentifier)}`);
+    } catch (err: any) {
+      try {
+        await axiosInstance.post(`/video/delete/${currentVideo?._id}`);
+        toast.success("Video deleted successfully.");
+        router.push(`/channel/${encodeURIComponent(channelIdentifier)}`);
+      } catch (err2) {
+        toast.error("Failed to delete video. Please try again.");
+      }
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentVideo(video);
@@ -351,6 +391,19 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
             Thumbnail
           </Button>
 
+          {isVideoOwner && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 bg-muted hover:bg-destructive/20 text-destructive font-medium rounded-full h-9 px-3 text-xs sm:text-sm"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              title="Delete this video"
+            >
+              <Trash2 className="w-4 h-4 mr-1.5 text-destructive" />
+              Delete
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
@@ -374,15 +427,58 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => !open && setIsDeleteDialogOpen(false)}
+      >
+        <DialogContent className="max-w-md bg-card text-card-foreground border-border rounded-3xl p-6 shadow-2xl">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-destructive">
+              <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-destructive" />
+              </div>
+              <span>Delete Video?</span>
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground leading-relaxed pt-1">
+              Are you sure you want to permanently delete "{currentVideo?.videotitle}"? This will remove the video file, thumbnail, and view counts from your channel and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+              className="rounded-full px-5 text-xs font-semibold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteVideo}
+              disabled={isDeleting}
+              className="rounded-full px-5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+            >
+              <Trash2 className={`w-3.5 h-3.5 ${isDeleting ? "animate-spin" : ""}`} />
+              <span>{isDeleting ? "Deleting..." : "Delete Permanently"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="bg-muted/60 dark:bg-card/70 border border-border rounded-xl p-4 text-foreground">
         <div className="flex gap-4 text-sm font-medium mb-2 text-muted-foreground">
-          <span>{video.views.toLocaleString()} views</span>
-          <span>{formatDistanceToNow(new Date(video.createdAt))} ago</span>
+          <span>{video.views?.toLocaleString?.() || video.views || 0} views</span>
+          <span>{video.createdAt ? formatDistanceToNow(new Date(video.createdAt)) + " ago" : "Recently"}</span>
         </div>
         <div className={`text-sm ${showFullDescription ? "" : "line-clamp-3"}`}>
-          <p>
-            Sample video description. This would contain the actual video
-            description from the database.
+          <p className="leading-relaxed">
+            {currentVideo?.description ||
+              `Official video stream for "${currentVideo?.videotitle || "this video"}". High-definition playback, real-time closed captions, offline download, and multi-device streaming on YouTube 2.0.`}
           </p>
         </div>
         <Button
