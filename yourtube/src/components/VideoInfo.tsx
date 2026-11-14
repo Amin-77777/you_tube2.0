@@ -222,12 +222,15 @@ const VideoInfo = ({ video, onVideoUpdate }: any) => {
         }
 
         const fullUrl = `${getBackendUrl()}${res.data.downloadUrl}`;
-        const link = document.createElement("a");
-        link.href = fullUrl;
-        link.setAttribute("download", "");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = fullUrl;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 60000);
       }
     } catch (err: any) {
       const errData = err.response?.data;
